@@ -1,81 +1,130 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Address } from "@scaffold-ui/components";
-import type { NextPage } from "next";
-import { hardhat } from "viem/chains";
-import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { useTargetNetwork } from "~~/hooks/scaffold-eth";
+import CreateAssemblyModal from "@/components/create-assembly-modal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
-const Home: NextPage = () => {
-  const { address: connectedAddress } = useAccount();
-  const { targetNetwork } = useTargetNetwork();
+export default function Home() {
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const recentAssemblies = [
+    {
+      id: "1",
+      name: "Protocol Governance",
+      members: 234,
+      activeVotes: 3,
+      image: "/placeholder.svg?height=64&width=64",
+    },
+    {
+      id: "2",
+      name: "Community Treasury",
+      members: 145,
+      activeVotes: 1,
+      image: "/placeholder.svg?height=64&width=64",
+    },
+    {
+      id: "3",
+      name: "Feature Voting",
+      members: 89,
+      activeVotes: 2,
+      image: "/placeholder.svg?height=64&width=64",
+    },
+  ];
 
   return (
-    <>
-      <div className="flex items-center flex-col grow pt-10">
-        <div className="px-5">
-          <h1 className="text-center">
-            <span className="block text-2xl mb-2">Welcome to</span>
-            <span className="block text-4xl font-bold">Scaffold-ETH 2</span>
-          </h1>
-          <div className="flex justify-center items-center space-x-2 flex-col">
-            <p className="my-2 font-medium">Connected Address:</p>
-            <Address
-              address={connectedAddress}
-              chain={targetNetwork}
-              blockExplorerAddressLink={
-                targetNetwork.id === hardhat.id ? `/blockexplorer/address/${connectedAddress}` : undefined
-              }
-            />
-          </div>
-
-          <p className="text-center text-lg">
-            Get started by editing{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/nextjs/app/page.tsx
-            </code>
-          </p>
-          <p className="text-center text-lg">
-            Edit your smart contract{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              YourContract.sol
-            </code>{" "}
-            in{" "}
-            <code className="italic bg-base-300 text-base font-bold max-w-full break-words break-all inline-block">
-              packages/hardhat/contracts
-            </code>
-          </p>
-        </div>
-
-        <div className="grow bg-base-300 w-full mt-16 px-8 py-12">
-          <div className="flex justify-center items-center gap-12 flex-col md:flex-row">
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <BugAntIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
-                </Link>{" "}
-                tab.
-              </p>
-            </div>
-            <div className="flex flex-col bg-base-100 px-10 py-10 text-center items-center max-w-xs rounded-3xl">
-              <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
-              <p>
-                Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
-                </Link>{" "}
-                tab.
-              </p>
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="border-b border-border">
+          <div className="max-w-6xl mx-auto px-4 py-16 md:py-24">
+            <h1 className="text-5xl md:text-6xl font-mono font-bold mb-6 text-balance">
+              DECENTRALIZED GOVERNANCE AT SCALE
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mb-8 leading-relaxed">
+              Agora enables communities to govern collectively. Create assemblies, run contests, and make decisions with
+              direct participation from your members.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link href="/assemblies">
+                <Button className="font-mono w-full sm:w-auto">EXPLORE ASSEMBLIES</Button>
+              </Link>
+              <Button
+                variant="outline"
+                className="font-mono w-full sm:w-auto bg-transparent"
+                onClick={() => setShowCreateModal(true)}
+              >
+                CREATE ASSEMBLY
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
-    </>
+        </section>
+
+        {/* Stats Section */}
+        <section className="border-b border-border">
+          <div className="max-w-6xl mx-auto px-4 py-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div>
+                <p className="text-3xl font-mono font-bold">24</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Active Assemblies</p>
+              </div>
+              <div>
+                <p className="text-3xl font-mono font-bold">156</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Total Contests</p>
+              </div>
+              <div>
+                <p className="text-3xl font-mono font-bold">8.2K</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Total Members</p>
+              </div>
+              <div>
+                <p className="text-3xl font-mono font-bold">42.3M</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Total Votes Cast</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Recent Assemblies Section */}
+        <section className="border-b border-border">
+          <div className="max-w-6xl mx-auto px-4 py-12">
+            <h2 className="text-3xl font-mono font-bold mb-8">RECENT ASSEMBLIES</h2>
+            <div className="space-y-3">
+              {recentAssemblies.map(assembly => (
+                <Card
+                  key={assembly.id}
+                  className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <Link href={`/assemblies/${assembly.id}`}>
+                    <div className="flex gap-4">
+                      <img
+                        src={assembly.image || "/placeholder.svg"}
+                        alt={assembly.name}
+                        className="w-16 h-16 border border-border"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-mono font-semibold text-lg">{assembly.name}</h3>
+                        <p className="text-xs text-muted-foreground font-mono mt-2">
+                          {assembly.members} members · {assembly.activeVotes} active votes
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link href="/assemblies">
+                <Button variant="outline" className="font-mono bg-transparent">
+                  VIEW ALL ASSEMBLIES
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <CreateAssemblyModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
+    </div>
   );
-};
-
-export default Home;
+}
