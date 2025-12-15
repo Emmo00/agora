@@ -1,37 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import CreateAssemblyModal from "@/components/create-assembly-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useAssemblyCount, useRecentAssemblies } from "@/hooks/useAssemblyData";
 
 export default function Home() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const recentAssemblies = [
-    {
-      id: "1",
-      name: "Protocol Governance",
-      members: 234,
-      activeVotes: 3,
-      image: "/placeholder.svg?height=64&width=64",
-    },
-    {
-      id: "2",
-      name: "Community Treasury",
-      members: 145,
-      activeVotes: 1,
-      image: "/placeholder.svg?height=64&width=64",
-    },
-    {
-      id: "3",
-      name: "Feature Voting",
-      members: 89,
-      activeVotes: 2,
-      image: "/placeholder.svg?height=64&width=64",
-    },
-  ];
+  // Fetch assembly data from smart contracts
+  const { count: assemblyCount } = useAssemblyCount();
+  const { data: recentAssemblies, isLoading: assembliesLoading } = useRecentAssemblies(5);
+
+  // Skeleton loader for recent assemblies
+  const AssemblySkeleton = () => (
+    <Card className="p-4 border border-border animate-pulse">
+      <div className="flex gap-4">
+        <div className="w-16 h-16 border border-border bg-muted rounded" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-muted rounded w-1/2" />
+          <div className="h-3 bg-muted rounded w-1/3" />
+        </div>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -66,19 +61,19 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-4 py-12">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div>
-                <p className="text-3xl font-mono font-bold">24</p>
-                <p className="text-sm text-muted-foreground font-mono mt-2">Active Assemblies</p>
+                <p className="text-3xl font-mono font-bold">{assemblyCount}</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Total Assemblies</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">156</p>
+                <p className="text-3xl font-mono font-bold">—</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Contests</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">8.2K</p>
+                <p className="text-3xl font-mono font-bold">—</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Members</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">42.3M</p>
+                <p className="text-3xl font-mono font-bold">—</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Votes Cast</p>
               </div>
             </div>
@@ -90,28 +85,42 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-4 py-12">
             <h2 className="text-3xl font-mono font-bold mb-8">RECENT ASSEMBLIES</h2>
             <div className="space-y-3">
-              {recentAssemblies.map(assembly => (
-                <Card
-                  key={assembly.id}
-                  className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
-                >
-                  <Link href={`/assemblies/${assembly.id}`}>
-                    <div className="flex gap-4">
-                      <img
-                        src={assembly.image || "/placeholder.svg"}
-                        alt={assembly.name}
-                        className="w-16 h-16 border border-border"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-mono font-semibold text-lg">{assembly.name}</h3>
-                        <p className="text-xs text-muted-foreground font-mono mt-2">
-                          {assembly.members} members · {assembly.activeVotes} active votes
-                        </p>
+              {assembliesLoading ? (
+                <>
+                  <AssemblySkeleton />
+                  <AssemblySkeleton />
+                  <AssemblySkeleton />
+                </>
+              ) : recentAssemblies.length > 0 ? (
+                recentAssemblies.map((assembly) => (
+                  <Card
+                    key={assembly.address}
+                    className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
+                  >
+                    <Link href={`/assemblies/${assembly.address}`}>
+                      <div className="flex gap-4">
+                        <Image
+                          src={assembly.imageUrl || "/placeholder.svg?height=64&width=64"}
+                          alt={assembly.name}
+                          width={64}
+                          height={64}
+                          className="border border-border object-cover"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-mono font-semibold text-lg">{assembly.name}</h3>
+                          <p className="text-xs text-muted-foreground font-mono mt-2">
+                            {assembly.adminCount} admins · {assembly.contestCount} contests
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </Card>
+                ))
+              ) : (
+                <Card className="p-8 border border-border text-center">
+                  <p className="text-sm text-muted-foreground font-mono">No assemblies found. Be the first to create one!</p>
                 </Card>
-              ))}
+              )}
             </div>
             <div className="text-center mt-8">
               <Link href="/assemblies">
