@@ -4,7 +4,6 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useTransactionReceipt } from "wagmi";
 import { useScaffoldWriteContract } from "@/hooks/scaffold-eth";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +28,7 @@ interface CreateAssemblyModalProps {
 export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: CreateAssemblyModalProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(isOpenProp || false);
-  const [txHash, setTxHash] = useState<`0x${string}`>();
+
 
   useEffect(() => {
     if (isOpenProp !== undefined) {
@@ -43,57 +42,10 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
   const [imagePreview, setImagePreview] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Write contract hook
+  // Write contract hook with onBlockConfirmation callback
   const { writeContractAsync: createAssembly, isMining: isCreating } = useScaffoldWriteContract({
     contractName: "AgoraFactory",
   });
-
-  // Watch for transaction receipt
-  const { data: txReceipt } = useTransactionReceipt({
-    hash: txHash as `0x${string}`,
-    query: { enabled: !!txHash },
-  });
-
-  // Handle transaction completion
-  useEffect(() => {
-    if (!txReceipt) return;
-
-    // Parse AssemblyCreated event from logs
-    // Event: AssemblyCreated(address indexed assembly, address indexed creator, string metadataURI, uint256 assemblyIndex)
-    // Event signature: keccak256("AssemblyCreated(address,address,string,uint256)")
-    const assemblyCreatedEventSignature =
-      "0xc64d9fe893a0f0c4bdfe0e26c5f80c21dd20e8bd29ab8e5ce01cba961fd7bfe8";
-
-    const assemblyCreatedLog = txReceipt.logs.find((log) => {
-      try {
-        return log.topics[0] === assemblyCreatedEventSignature;
-      } catch {
-        return false;
-      }
-    });
-
-    if (assemblyCreatedLog && assemblyCreatedLog.topics[1]) {
-      // Extract assembly address from the first indexed parameter (topics[1])
-      // topics[1] is the assembly address (padded to 32 bytes)
-      const assemblyAddress = `0x${assemblyCreatedLog.topics[1].slice(-40)}`;
-
-      notification.success("Assembly created successfully! 🎉");
-
-      // Close modal and reset form
-      setIsOpen(false);
-      onClose?.();
-
-      // Reset form
-      setName("");
-      setDescription("");
-      setImageFile(null);
-      setImagePreview("");
-      setTxHash(undefined);
-
-      // Navigate to the new assembly detail page
-      router.push(`/assemblies/${assemblyAddress}`);
-    }
-  }, [txReceipt, router, onClose]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -133,22 +85,58 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
 
       setIsUploading(false);
 
-      // 4. Call createAssembly with proper args
+      // 4. Call createAssembly with onBlockConfirmation callback
       const createAssemblyToast = notification.loading("Creating assembly...");
       try {
-        const hash = await createAssembly(
+        await createAssembly(
           {
             functionName: "createAssembly",
             args: [metadataURI],
+          },
+          {
+            onBlockConfirmation: (txnReceipt) => {
+              notification.remove(createAssemblyToast.toString());
+
+              // Parse AssemblyCreated event from transaction receipt
+              // Event signature: keccak256("AssemblyCreated(address,address,string,uint256)")
+              const assemblyCreatedEventSignature =
+                "0xc64d9fe893a0f0c4bdfe0e26c5f80c21dd20e8bd29ab8e5ce01cba961fd7bfe8";
+
+              const assemblyCreatedLog = txnReceipt.logs.find((log) => {
+                try {
+                  return log.topics[0] === assemblyCreatedEventSignature;
+                } catch {
+                  return false;
+                }
+              });
+
+              if (assemblyCreatedLog && assemblyCreatedLog.topics[1]) {
+                // Extract assembly address from topics[1]
+                const assemblyAddress = `0x${assemblyCreatedLog.topics[1].slice(-40)}`;
+
+                console.log("Assembly created at:", assemblyAddress);
+                notification.success("Assembly created successfully! 🎉");
+
+                // Close modal and reset form
+                setIsOpen(false);
+                onClose?.();
+
+                // Reset form fields
+                setName("");
+                setDescription("");
+                setImageFile(null);
+                setImagePreview("");
+
+                // Navigate to the new assembly detail page
+                setTimeout(() => {
+                  router.push(`/assemblies/${assemblyAddress}`);
+                }, 500);
+              } else {
+                notification.error("Failed to parse assembly address from transaction");
+              }
+            },
           }
         );
-
-        // Store the transaction hash to watch for receipt
-        if (hash) {
-          setTxHash(hash);
-          notification.success("Assembly creation transaction sent! Waiting for confirmation...");
-        }
-        notification.remove(createAssemblyToast.toString());
       } catch (error) {
         notification.remove(createAssemblyToast.toString());
         throw error;
