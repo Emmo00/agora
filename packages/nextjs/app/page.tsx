@@ -6,7 +6,7 @@ import Link from "next/link";
 import CreateAssemblyModal from "@/components/create-assembly-modal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useAssemblyCount, useRecentAssemblies } from "@/hooks/useAssemblyData";
+import { useAssemblyCount, useRecentAssemblies, useTotalContestCount, useTotalVoteCount, useTotalMemberCount } from "@/hooks/useAssemblyData";
 
 export default function Home() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -14,6 +14,9 @@ export default function Home() {
   // Fetch assembly data from smart contracts
   const { count: assemblyCount } = useAssemblyCount();
   const { data: recentAssemblies, isLoading: assembliesLoading } = useRecentAssemblies(5);
+  const { count: totalContests } = useTotalContestCount();
+  const { count: totalMembers } = useTotalMemberCount();
+  const { count: totalVotes } = useTotalVoteCount();
 
   // Skeleton loader for recent assemblies
   const AssemblySkeleton = () => (
@@ -65,15 +68,15 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Assemblies</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">—</p>
+                <p className="text-3xl font-mono font-bold">{totalContests}</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Contests</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">—</p>
+                <p className="text-3xl font-mono font-bold">{totalMembers}</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Members</p>
               </div>
               <div>
-                <p className="text-3xl font-mono font-bold">—</p>
+                <p className="text-3xl font-mono font-bold">{totalVotes}</p>
                 <p className="text-sm text-muted-foreground font-mono mt-2">Total Votes Cast</p>
               </div>
             </div>
