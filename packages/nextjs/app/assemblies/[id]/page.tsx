@@ -1,83 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const MOCK_ASSEMBLY = {
-  id: "1",
-  name: "Protocol Governance",
-  description:
-    "Core governance decisions for the protocol. Community-driven decisions on protocol upgrades, parameter changes, and strategic direction.",
-  image: "/placeholder.svg?height=200&width=200",
-  members: 234,
-  admins: ["0x1234...5678", "0xabcd...ef01", "0x9876...5432"],
-  isAdmin: false,
-};
-
-const MOCK_CONTESTS = [
-  {
-    id: "1",
-    prompt: "Which feature should we prioritize next?",
-    status: "ACTIVE",
-    endsIn: "2d 14h",
-    votes: 234,
-    options: 3,
-    gated: true,
-  },
-  {
-    id: "2",
-    prompt: "Should we migrate to v2?",
-    status: "ENDED",
-    endedAgo: "5 days ago",
-    votes: 145,
-    winner: "Yes (67%)",
-    gated: false,
-  },
-  {
-    id: "3",
-    prompt: "Treasury allocation for Q2",
-    status: "ACTIVE",
-    endsIn: "1d 6h",
-    votes: 89,
-    options: 4,
-    gated: true,
-  },
-];
-
-const MOCK_PASSPORTS = [
-  {
-    id: "1",
-    name: "MEMBER",
-    mode: "Open minting",
-    holders: 234,
-    userHolds: true,
-  },
-  {
-    id: "2",
-    name: "CONTRIBUTOR",
-    mode: "Allowlist only",
-    holders: 45,
-    userEligible: false,
-  },
-  {
-    id: "3",
-    name: "CORE TEAM",
-    mode: "Admin only",
-    holders: 5,
-    userEligible: false,
-  },
-];
-
-const MOCK_MEMBERS = Array.from({ length: 234 }, (_, i) => ({
-  id: i + 1,
-  address: `0x${Math.random().toString(16).slice(2)}...${Math.random().toString(16).slice(2)}`,
-  passports: ["Member", ...(i % 3 === 0 ? ["Contributor"] : [])],
-})).slice(0, 12);
+import { useAssemblyDetail, useAssemblyContests, useAssemblyPassports } from "@/hooks/useAssemblyDetail";
+import { formatDuration } from "@/utils/format";
+import { notification } from "@/utils/scaffold-eth";
+import CreatePassportTypeModal from "@/components/create-passport-type-modal";
+import CreateContestModal from "@/components/create-contest-modal";
 
 export default function AssemblyDetailPage() {
+  const params = useParams();
+  const assemblyAddress = (params.id as string) as `0x${string}`;
   const [activeTab, setActiveTab] = useState("contests");
+  const [showCreatePassportModal, setShowCreatePassportModal] = useState(false);
+  const [showCreateContestModal, setShowCreateContestModal] = useState(false);
+
+  // Fetch assembly data
+  const { assemblyData, isLoading: assemblyLoading, isAdmin } = useAssemblyDetail(assemblyAddress);
+
+  // Fetch contests
+  const { contests, isLoading: contestsLoading } = useAssemblyContests(assemblyAddress);
+
+  // Fetch passports
+  const { passports, isLoading: passportsLoading, refetch: refetchPassports } = useAssemblyPassports(
+    (assemblyData?.passportsAddress as `0x${string}`) || null
+  );
+
+  // Sort contests: active first, then by end time
+  const sortedContests = useMemo(() => {
+    return [...contests].sort((a, b) => {
+      if (a.isActive && !b.isActive) return -1;
+      if (!a.isActive && b.isActive) return 1;
+      return Number(b.votingEnd) - Number(a.votingEnd);
+    });
+  }, [contests]);
+
+  if (assemblyLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="animate-pulse">
+          <p className="font-mono text-muted-foreground">Loading assembly...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!assemblyData) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <p className="font-mono text-muted-foreground">Assembly not found</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -85,15 +63,17 @@ export default function AssemblyDetailPage() {
         {/* Header Section */}
         <div className="mb-12 pb-12 border-b border-border">
           <div className="flex gap-8 mb-8">
-            <img
-              src={MOCK_ASSEMBLY.image || "/placeholder.svg"}
-              alt={MOCK_ASSEMBLY.name}
-              className="w-32 h-32 border border-border"
+            <Image
+              src={assemblyData.imageUrl || "/placeholder.svg?height=128&width=128"}
+              alt={assemblyData.name}
+              width={128}
+              height={128}
+              className="border border-border object-cover"
             />
             <div className="flex-1">
-              <h1 className="text-4xl font-mono font-bold mb-3">{MOCK_ASSEMBLY.name}</h1>
-              <p className="text-muted-foreground mb-6">{MOCK_ASSEMBLY.description}</p>
-              {MOCK_ASSEMBLY.isAdmin && (
+              <h1 className="text-4xl font-mono font-bold mb-3">{assemblyData.name}</h1>
+              <p className="text-muted-foreground mb-6">{assemblyData.description}</p>
+              {isAdmin && (
                 <div className="inline-block">
                   <Button className="font-mono text-sm">ADMIN PANEL ▼</Button>
                 </div>
@@ -114,94 +94,196 @@ export default function AssemblyDetailPage() {
           <TabsContent value="contests" className="space-y-4">
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground font-mono">
-                {MOCK_CONTESTS.length} total, {MOCK_CONTESTS.filter(c => c.status === "ACTIVE").length} active
+                {sortedContests.length} total, {sortedContests.filter((c) => c.isActive).length} active
               </p>
-              <Button className="font-mono text-sm">+ CREATE CONTEST</Button>
-            </div>
-            <div className="space-y-3">
-              {MOCK_CONTESTS.map(contest => (
-                <Card
-                  key={contest.id}
-                  className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
+              {isAdmin && (
+                <Button
+                  onClick={() => setShowCreateContestModal(true)}
+                  className="font-mono text-sm"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-mono font-semibold">{contest.prompt}</h3>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-xs font-mono px-2 py-1 border ${
-                          contest.status === "ACTIVE"
-                            ? "border-green-500 text-green-600"
-                            : "border-border text-muted-foreground"
-                        }`}
-                      >
-                        {contest.status}
-                      </span>
-                      {contest.gated && <span className="text-sm">🔒</span>}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-mono mb-3">
-                    {contest.status === "ACTIVE" ? `Ends in ${contest.endsIn}` : `Ended ${contest.endedAgo}`} ·{" "}
-                    {contest.votes} votes {contest.options ? `· ${contest.options} options` : ""}
-                  </p>
-                  <Button variant="outline" className="font-mono text-xs bg-transparent" size="sm">
-                    {contest.status === "ACTIVE" ? "VOTE" : "VIEW RESULTS"}
-                  </Button>
-                </Card>
-              ))}
+                  + CREATE CONTEST
+                </Button>
+              )}
             </div>
+
+            {contestsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4 border border-border animate-pulse">
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </Card>
+                ))}
+              </div>
+            ) : sortedContests.length > 0 ? (
+              <div className="space-y-3">
+                {sortedContests.map((contest) => {
+                  const now = Math.floor(Date.now() / 1000);
+                  const timeRemaining = Number(contest.votingEnd) - now;
+                  const timeText =
+                    timeRemaining > 0 ? formatDuration(timeRemaining) : "Ended";
+
+                  return (
+                    <Card
+                      key={contest.address}
+                      className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-mono font-semibold">{contest.prompt}</h3>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-mono px-2 py-1 border ${
+                              contest.isActive
+                                ? "border-green-500 text-green-600"
+                                : "border-border text-muted-foreground"
+                            }`}
+                          >
+                            {contest.isActive ? "ACTIVE" : "ENDED"}
+                          </span>
+                          {contest.requiredPassports.length > 0 && (
+                            <span className="text-sm">🔒</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono mb-3">
+                        {contest.isActive ? `Ends in ${timeText}` : `Ended ${timeText} ago`} · {contest.totalVotes}{" "}
+                        votes · {contest.options.length} options
+                      </p>
+                      <Button variant="outline" className="font-mono text-xs bg-transparent" size="sm">
+                        {contest.isActive ? "VOTE" : "VIEW RESULTS"}
+                      </Button>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="p-8 border border-border text-center">
+                <p className="text-sm text-muted-foreground font-mono">
+                  No contests yet. {isAdmin && "Create one to get started!"}
+                </p>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Passports Tab */}
           <TabsContent value="passports" className="space-y-4">
-            <p className="text-sm text-muted-foreground font-mono mb-6">PASSPORT TYPES ({MOCK_PASSPORTS.length})</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {MOCK_PASSPORTS.map(passport => (
-                <Card key={passport.id} className="p-6 border border-border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">🎫</span>
-                    <h3 className="font-mono font-bold text-lg">{passport.name}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground font-mono mb-3">{passport.mode}</p>
-                  <p className="text-xs text-muted-foreground font-mono mb-4">{passport.holders} holders</p>
-                  <Button
-                    variant={passport.userHolds ? "default" : "outline"}
-                    className="font-mono text-xs w-full"
-                    disabled={!passport.userEligible && !passport.userHolds}
-                  >
-                    {passport.userHolds ? "✓ YOU HOLD THIS" : passport.userEligible ? "MINT" : "NOT ELIGIBLE"}
-                  </Button>
-                </Card>
-              ))}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted-foreground font-mono">PASSPORT TYPES ({passports.length})</p>
+              {isAdmin && (
+                <Button
+                  className="font-mono text-sm"
+                  onClick={() => setShowCreatePassportModal(true)}
+                >
+                  + CREATE PASSPORT TYPE
+                </Button>
+              )}
             </div>
+
+            {passportsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-6 border border-border animate-pulse">
+                    <div className="h-6 bg-muted rounded w-1/2 mb-3" />
+                    <div className="h-4 bg-muted rounded w-1/3" />
+                  </Card>
+                ))}
+              </div>
+            ) : passports.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {passports.map((passport) => (
+                  <Card
+                    key={passport.tokenId}
+                    className="p-6 border border-border hover:bg-muted cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (!passport.userHolds) {
+                        window.location.href = `/passports/${assemblyAddress}/${passport.tokenId}`;
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">🎫</span>
+                      <h3 className="font-mono font-bold text-lg">{passport.name}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground font-mono mb-3">
+                      {passport.isOpen ? "Open minting" : "Allowlist only"}
+                    </p>
+                    <Button
+                      variant={passport.userHolds ? "default" : "outline"}
+                      className="font-mono text-xs w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!passport.userHolds) {
+                          window.location.href = `/passports/${assemblyAddress}/${passport.tokenId}`;
+                        }
+                      }}
+                    >
+                      {passport.userHolds ? "✓ YOU HOLD THIS" : passport.isOpen ? "MINT NOW" : "CHECK ELIGIBILITY"}
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-8 border border-border text-center">
+                <p className="text-sm text-muted-foreground font-mono">
+                  No passport types yet. {isAdmin && "Create one to gate voting!"}
+                </p>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Members Tab */}
           <TabsContent value="members" className="space-y-4">
             <div className="mb-6">
-              <p className="text-sm text-muted-foreground font-mono mb-3">MEMBERS ({MOCK_ASSEMBLY.members} total)</p>
+              <p className="text-sm text-muted-foreground font-mono mb-3">
+                MEMBERS ({assemblyData.adminCount} admins)
+              </p>
               <div className="flex flex-wrap gap-2 mb-6">
-                {["All", "Member", "Contributor"].map(p => (
-                  <Button key={p} variant="outline" className="font-mono text-xs bg-transparent" size="sm">
-                    {p}
+                <Button variant="outline" className="font-mono text-xs bg-transparent" size="sm">
+                  All
+                </Button>
+                {passports.map((passport) => (
+                  <Button
+                    key={passport.tokenId}
+                    variant="outline"
+                    className="font-mono text-xs bg-transparent"
+                    size="sm"
+                  >
+                    {passport.name}
                   </Button>
                 ))}
               </div>
             </div>
-            <div className="space-y-2">
-              {MOCK_MEMBERS.map(member => (
-                <div key={member.id} className="p-3 border border-border rounded font-mono text-sm">
-                  <p className="font-semibold mb-1">{member.address}</p>
-                  <p className="text-xs text-muted-foreground">{member.passports.join(", ")}</p>
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-6">
-              <Button variant="outline" className="font-mono text-sm bg-transparent">
-                LOAD MORE
-              </Button>
-            </div>
+            <Card className="p-8 border border-border text-center">
+              <p className="text-sm text-muted-foreground font-mono mb-4">
+                Member list will be loaded from contract data
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">
+                Requires querying all passport holders and their balances
+              </p>
+            </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Create Passport Type Modal */}
+        {assemblyData && (
+          <CreatePassportTypeModal
+            assemblyAddress={assemblyAddress}
+            isOpen={showCreatePassportModal}
+            onClose={() => setShowCreatePassportModal(false)}
+            onSuccess={() => refetchPassports()}
+          />
+        )}
+
+        {/* Create Contest Modal */}
+        <CreateContestModal
+          assemblyAddress={assemblyAddress}
+          isOpen={showCreateContestModal}
+          onClose={() => setShowCreateContestModal(false)}
+          onSuccess={() => {
+            // Refetch contests after creation
+            window.location.reload();
+          }}
+        />
       </main>
     </div>
   );

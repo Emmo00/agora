@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import deployedContracts from "@/contracts/deployedContracts";
 import { convertIPFSUrl, fetchFromIPFS } from "@/utils/ipfs";
 import { notification } from "@/utils/scaffold-eth";
-import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
+import deployedContracts from "@/contracts/deployedContracts";
 
 interface PassportMetadata {
   name: string;
@@ -90,7 +90,7 @@ export default function PassportMintPage() {
         }
 
         const metadata = await fetchFromIPFS(metadataUri);
-        setPassportData(metadata as PassportMetadata);
+        setPassportData(metadata);
         setPassportType(passportTypeData);
       } catch (error) {
         console.error("Failed to fetch passport metadata:", error);
@@ -158,14 +158,14 @@ export default function PassportMintPage() {
       });
 
       notification.success("Passport minted successfully! 🎉");
-
+      
       // Redirect back to assembly after a short delay
       setTimeout(() => {
         router.push(`/assemblies/${assemblyAddress}`);
       }, 2000);
     } catch (error: any) {
       console.error("Minting error:", error);
-
+      
       // Parse common errors
       if (error.message?.includes("AlreadyHoldsPassport")) {
         notification.error("You already hold this passport");
@@ -185,19 +185,23 @@ export default function PassportMintPage() {
       case "loading":
         return (
           <Card className="p-8 border border-border text-center">
-            <p className="text-sm text-muted-foreground font-mono animate-pulse">Checking eligibility...</p>
+            <p className="text-sm text-muted-foreground font-mono animate-pulse">
+              Checking eligibility...
+            </p>
           </Card>
         );
 
       case "not-connected":
         return (
           <Card className="p-8 border border-border text-center">
-            <p className="text-sm text-muted-foreground font-mono mb-4">Connect your wallet to mint this passport</p>
-            <Button
+            <p className="text-sm text-muted-foreground font-mono mb-4">
+              Connect your wallet to mint this passport
+            </p>
+            <Button 
               className="font-mono text-sm"
               onClick={() => {
                 // Trigger wallet connection - RainbowKit handles this
-                const event = new CustomEvent("rainbow-kit-connect");
+                const event = new CustomEvent('rainbow-kit-connect');
                 window.dispatchEvent(event);
               }}
             >
@@ -209,16 +213,26 @@ export default function PassportMintPage() {
       case "already-holds":
         return (
           <Card className="p-8 text-center bg-green-950 border border-green-700">
-            <p className="text-sm font-mono text-green-400 mb-4">✓ YOU ALREADY HOLD THIS PASSPORT</p>
-            <p className="text-xs font-mono text-green-300">You cannot mint the same passport twice</p>
+            <p className="text-sm font-mono text-green-400 mb-4">
+              ✓ YOU ALREADY HOLD THIS PASSPORT
+            </p>
+            <p className="text-xs font-mono text-green-300">
+              You cannot mint the same passport twice
+            </p>
           </Card>
         );
 
       case "eligible":
         return (
           <Card className="p-8 text-center bg-blue-950 border border-blue-700">
-            <p className="text-sm font-mono text-blue-400 mb-6">✓ YOU ARE ELIGIBLE TO MINT THIS PASSPORT</p>
-            <Button className="font-mono text-sm" onClick={handleMint} disabled={isMinting}>
+            <p className="text-sm font-mono text-blue-400 mb-6">
+              ✓ YOU ARE ELIGIBLE TO MINT THIS PASSPORT
+            </p>
+            <Button
+              className="font-mono text-sm"
+              onClick={handleMint}
+              disabled={isMinting}
+            >
               {isMinting ? "MINTING..." : "MINT PASSPORT"}
             </Button>
           </Card>
@@ -227,7 +241,9 @@ export default function PassportMintPage() {
       case "not-eligible":
         return (
           <Card className="p-8 text-center bg-red-950 border border-red-700">
-            <p className="text-sm font-mono text-red-400 mb-4">⚠️ YOU ARE NOT ELIGIBLE TO MINT</p>
+            <p className="text-sm font-mono text-red-400 mb-4">
+              ⚠️ YOU ARE NOT ELIGIBLE TO MINT
+            </p>
             <p className="text-xs font-mono text-red-300">
               This passport requires allowlist approval. Contact the assembly admins.
             </p>
@@ -240,7 +256,11 @@ export default function PassportMintPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-12">
         {/* Back Button */}
-        <Button variant="ghost" className="mb-8 font-mono text-sm" onClick={() => router.back()}>
+        <Button
+          variant="ghost"
+          className="mb-8 font-mono text-sm"
+          onClick={() => router.back()}
+        >
           ← BACK
         </Button>
 
@@ -254,7 +274,9 @@ export default function PassportMintPage() {
 
         {isLoading ? (
           <Card className="p-12 border border-border text-center">
-            <p className="text-sm text-muted-foreground font-mono animate-pulse">Loading passport information...</p>
+            <p className="text-sm text-muted-foreground font-mono animate-pulse">
+              Loading passport information...
+            </p>
           </Card>
         ) : passportData && passportType ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -279,7 +301,9 @@ export default function PassportMintPage() {
                 <div className="flex items-center justify-center mb-6">
                   <span
                     className={`text-xs font-mono px-3 py-1 border ${
-                      passportType[2] ? "border-green-500 text-green-600" : "border-yellow-500 text-yellow-600"
+                      passportType[2]
+                        ? "border-green-500 text-green-600"
+                        : "border-yellow-500 text-yellow-600"
                     }`}
                   >
                     {passportType[2] ? "OPEN MINTING" : "ALLOWLIST ONLY"}
@@ -304,13 +328,17 @@ export default function PassportMintPage() {
             <div className="md:col-span-2 space-y-6">
               {/* Eligibility Status */}
               <div>
-                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">ELIGIBILITY STATUS</h3>
+                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">
+                  ELIGIBILITY STATUS
+                </h3>
                 {renderEligibilitySection()}
               </div>
 
               {/* About This Passport */}
               <div>
-                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">ABOUT THIS PASSPORT</h3>
+                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">
+                  ABOUT THIS PASSPORT
+                </h3>
                 <Card className="p-6 border border-border space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground font-mono mb-1">TYPE ID</p>
@@ -318,7 +346,9 @@ export default function PassportMintPage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground font-mono mb-1">MINTING</p>
-                    <p className="font-mono font-bold">{passportType[2] ? "Anyone can mint" : "Allowlist required"}</p>
+                    <p className="font-mono font-bold">
+                      {passportType[2] ? "Anyone can mint" : "Allowlist required"}
+                    </p>
                   </div>
                   <div className="pt-4 border-t border-border">
                     <p className="text-xs text-muted-foreground font-mono mb-3">
@@ -331,16 +361,16 @@ export default function PassportMintPage() {
 
               {/* Requirements */}
               <div>
-                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">REQUIREMENTS</h3>
+                <h3 className="text-sm font-mono font-bold mb-4 text-muted-foreground">
+                  REQUIREMENTS
+                </h3>
                 <Card className="p-6 border border-border space-y-3">
                   <div className="flex items-start gap-3">
                     <span className="text-lg">✓</span>
                     <div>
                       <p className="font-mono font-bold text-sm">Connected Wallet</p>
                       <p className="text-xs text-muted-foreground font-mono">
-                        {isConnected
-                          ? `Connected: ${userAddress?.slice(0, 6)}...${userAddress?.slice(-4)}`
-                          : "Not connected"}
+                        {isConnected ? `Connected: ${userAddress?.slice(0, 6)}...${userAddress?.slice(-4)}` : "Not connected"}
                       </p>
                     </div>
                   </div>
