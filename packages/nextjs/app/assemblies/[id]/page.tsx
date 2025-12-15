@@ -14,10 +14,12 @@ import CreateContestModal from "@/components/create-contest-modal";
 
 export default function AssemblyDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const assemblyAddress = (params.id as string) as `0x${string}`;
   const [activeTab, setActiveTab] = useState("contests");
   const [showCreatePassportModal, setShowCreatePassportModal] = useState(false);
   const [showCreateContestModal, setShowCreateContestModal] = useState(false);
+  const [sharedContestId, setSharedContestId] = useState<string>("");
 
   // Fetch assembly data
   const { assemblyData, isLoading: assemblyLoading, isAdmin } = useAssemblyDetail(assemblyAddress);
@@ -123,10 +125,20 @@ export default function AssemblyDetailPage() {
                   const timeText =
                     timeRemaining > 0 ? formatDuration(timeRemaining) : "Ended";
 
+                  const handleShare = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/contests/${contest.address}`;
+                    navigator.clipboard.writeText(url);
+                    setSharedContestId(contest.address);
+                    setTimeout(() => setSharedContestId(""), 2000);
+                    notification.success("Link copied to clipboard!");
+                  };
+
                   return (
                     <Card
                       key={contest.address}
                       className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => router.push(`/contests/${contest.address}`)}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-mono font-semibold">{contest.prompt}</h3>
@@ -149,9 +161,27 @@ export default function AssemblyDetailPage() {
                         {contest.isActive ? `Ends in ${timeText}` : `Ended ${timeText} ago`} · {contest.totalVotes}{" "}
                         votes · {contest.options.length} options
                       </p>
-                      <Button variant="outline" className="font-mono text-xs bg-transparent" size="sm">
-                        {contest.isActive ? "VOTE" : "VIEW RESULTS"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          className="font-mono text-xs bg-transparent flex-1" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/contests/${contest.address}`);
+                          }}
+                        >
+                          {contest.isActive ? "VOTE" : "VIEW RESULTS"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="font-mono text-xs bg-transparent" 
+                          size="sm"
+                          onClick={handleShare}
+                        >
+                          {sharedContestId === contest.address ? "✓" : "SHARE"}
+                        </Button>
+                      </div>
                     </Card>
                   );
                 })}
