@@ -1,80 +1,200 @@
-# 🏗 Scaffold-ETH 2
+# �️ Agora - Onchain Governance Made Simple
 
 <h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
+  Make decisions with your community. Create groups, issue memberships, run votes. All onchain.
 </h4>
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+**Agora** is a simple, transparent governance platform for anyone. No tokens required.
 
-⚙️ Built using NextJS, RainbowKit, Hardhat, Wagmi, Viem, and Typescript.
+Built on **Scaffold-ETH 2** with **NextJS**, **RainbowKit**, **Hardhat**, **Wagmi**, **Viem**, and **TypeScript**.
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+## Features
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+- 👥 **Create Groups** - Start a governance group with a name, description, and image
+- 🎫 **Issue Membership Passes** - Create different membership types with open or allowlist minting
+- 🗳️ **Run Votes** - Create questions, propose options, and vote (with optional membership gating)
+- 📊 **Real-time Results** - See voting results update in real-time as votes are cast
+- 🔐 **Onchain** - Everything stored transparently on the blockchain, no centralized control
+- ♻️ **Reusable** - Deploy as many groups and votes as you want from a single factory contract
 
-## Requirements
+## Technology Stack
 
-Before you begin, you need to install the following tools:
+- **Frontend**: Next.js 13+ with TypeScript and Tailwind CSS
+- **Web3**: wagmi, RainbowKit, viem for wallet connection and contract interaction
+- **Smart Contracts**: Solidity with Hardhat (or Foundry)
+- **Storage**: IPFS for metadata (group info, images, etc.)
+- **Styling**: Tailwind CSS + daisyUI components
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
+## Smart Contracts
+
+The Agora protocol consists of:
+
+- **AgoraFactory** - Creates and manages group deployments
+- **Assembly** - Individual governance group with admin functions
+- **AssemblyPassports** - ERC1155 token contracts for membership passes
+- **Contest** - Individual vote/poll with voting and result tracking
+
+See `packages/hardhat/contracts` for full contract code.
+
+## Getting Started
+
+### Requirements
+
+- [Node.js >= v20.18.3](https://nodejs.org/en/download/)
+- [Yarn](https://yarnpkg.com/getting-started/install) (v1 or v2+)
 - [Git](https://git-scm.com/downloads)
 
-## Quickstart
+### Installation
 
-To get started with Scaffold-ETH 2, follow the steps below:
-
-1. Install dependencies if it was skipped in CLI:
-
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd agora
 ```
-cd my-dapp-example
+
+2. Install dependencies:
+```bash
 yarn install
 ```
 
-2. Run a local network in the first terminal:
+### Local Development
 
-```
+1. **Start a local blockchain** (Terminal 1):
+```bash
 yarn chain
 ```
 
-This command starts a local Ethereum network using Hardhat. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/hardhat/hardhat.config.ts`.
-
-3. On a second terminal, deploy the test contract:
-
-```
+2. **Deploy contracts** (Terminal 2):
+```bash
 yarn deploy
 ```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/hardhat/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/hardhat/deploy` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
-
-```
+3. **Start the frontend** (Terminal 3):
+```bash
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+Visit `http://localhost:3000` to see the application.
 
-Run smart contract test with `yarn hardhat:test`
+### Smart Contract Development
 
-- Edit your smart contracts in `packages/hardhat/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/hardhat/deploy`
+- Edit contracts in `packages/hardhat/contracts`
+- Run tests: `yarn hardhat:test`
+- Deploy to testnet: `yarn deploy --network scrollSepolia`
+- Verify contracts: `yarn verify --network scrollSepolia`
 
+### Frontend Development
 
-## Documentation
+- Edit pages in `packages/nextjs/app`
+- Edit components in `packages/nextjs/components`
+- Configuration: `packages/nextjs/scaffold.config.ts`
+- View styling in `packages/nextjs/styles/globals.css`
 
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
+## Project Structure
 
-To know more about its features, check out our [website](https://scaffoldeth.io).
+```
+agora/
+├── packages/
+│   ├── hardhat/          # Smart contracts & deployment scripts
+│   │   ├── contracts/    # Solidity contracts
+│   │   ├── deploy/       # Deployment scripts
+│   │   └── test/         # Contract tests
+│   └── nextjs/           # Frontend application
+│       ├── app/          # Pages (Groups, Votes, etc.)
+│       ├── components/   # React components
+│       ├── hooks/        # Custom React hooks
+│       ├── utils/        # Helper functions (IPFS, formatting)
+│       └── public/       # Static assets
+├── CONTRIBUTING.md       # Contribution guidelines
+└── README.md
+```
 
-## Contributing to Scaffold-ETH 2
+## Pages & Features
 
-We welcome contributions to Scaffold-ETH 2!
+### Landing Page (`/`)
+- Overview of Agora's features
+- Recent groups and activity stats
+- Quick access to create a group or browse groups
 
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+### Groups (`/assemblies`)
+- Browse all groups on the platform
+- Search by name or description
+- Create new groups
+- View member and vote counts
+
+### Group Detail (`/assemblies/[id]`)
+- **Votes Tab** - Create and view votes within the group
+- **Memberships Tab** - Create membership types and mint passes
+- **Members Tab** - See holder counts for each membership type
+- Admin panel for group administrators
+
+### Vote Detail (`/contests/[id]`)
+- Vote on active proposals
+- View voting results in real-time
+- Share vote links
+- Gated voting (membership pass required)
+
+## Configuration
+
+### `scaffold.config.ts`
+
+Configure your dApp settings:
+
+```typescript
+export const scaffoldConfig = {
+  targetNetworks: [scrollSepolia],
+  alchemyApiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
+  onlyLocalBurnerWallet: false,
+  walletAutoConnect: true,
+} as const satisfies ScaffoldConfig;
+```
+
+### Environment Variables
+
+Create `.env.local` in `packages/nextjs`:
+
+```
+NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_key
+NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_wc_project_id
+NEXT_PUBLIC_PINATA_API_KEY=your_pinata_key
+NEXT_PUBLIC_PINATA_SECRET=your_pinata_secret
+```
+
+## Deployment
+
+### Deploy Smart Contracts
+
+```bash
+yarn deploy --network scrollSepolia
+```
+
+Then update contract addresses in `packages/nextjs/contracts/deployedContracts.ts`.
+
+### Deploy Frontend
+
+```bash
+yarn vercel
+```
+
+Or connect your GitHub repo to Vercel for automatic deployments.
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+## License
+
+See [LICENCE](./LICENCE) file for details.
+
+## Resources
+
+- [Scaffold-ETH 2 Docs](https://docs.scaffoldeth.io)
+- [wagmi Documentation](https://wagmi.sh)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Hardhat Documentation](https://hardhat.org/docs)
+- [Solidity Documentation](https://docs.soliditylang.org)
+
+---
+
+**Built with ❤️ using Scaffold-ETH 2**
