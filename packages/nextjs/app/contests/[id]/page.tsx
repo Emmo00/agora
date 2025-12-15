@@ -199,7 +199,7 @@ export default function ContestDetailPage() {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="animate-pulse">
-          <p className="font-mono text-muted-foreground">Loading contest...</p>
+          <p className="font-mono text-muted-foreground">Loading vote...</p>
         </div>
       </div>
     );
@@ -211,14 +211,14 @@ export default function ContestDetailPage() {
         {/* Breadcrumb */}
         <div className="mb-8 text-sm font-mono text-muted-foreground">
           <Link href="/assemblies" className="hover:text-foreground transition-colors">
-            Assemblies
+            Groups
           </Link>
           {" / "}
           <Link href={`/assemblies/${sourceAssembly}`} className="hover:text-foreground transition-colors">
-            Assembly
+            Group
           </Link>
           {" / "}
-          <span className="text-foreground">Contest</span>
+          <span className="text-foreground">Vote</span>
         </div>
 
         {/* Header */}
@@ -232,7 +232,7 @@ export default function ContestDetailPage() {
               >
                 {isActive ? "ACTIVE" : "ENDED"}
               </span>
-              {isGated && <span className="text-sm">🔒 Passport Gated</span>}
+              {isGated && <span className="text-sm">🔒 Membership Required</span>}
             </div>
             <Button onClick={handleShare} variant="outline" className="font-mono text-sm bg-transparent">
               {showShareCopied ? "✓ COPIED" : "SHARE"}
@@ -272,14 +272,14 @@ export default function ContestDetailPage() {
             ) : !canVote ? (
               <Card className="p-6 border border-border bg-muted/30 text-center">
                 <p className="text-sm text-muted-foreground font-mono mb-4">
-                  {isGated ? "You need a required passport to vote" : "You cannot vote on this contest"}
+                  {isGated ? "You need a required membership pass to vote" : "You cannot vote on this vote"}
                 </p>
                 {isGated && (
                   <Button
                     onClick={() => router.push(`/assemblies/${sourceAssembly}?tab=passports`)}
                     className="font-mono"
                   >
-                    VIEW PASSPORTS
+                    VIEW MEMBERSHIPS
                   </Button>
                 )}
               </Card>
@@ -370,7 +370,7 @@ export default function ContestDetailPage() {
             variant="outline"
             className="font-mono bg-transparent"
           >
-            BACK TO ASSEMBLY
+            ← BACK TO GROUP
           </Button>
         </div>
       </main>
