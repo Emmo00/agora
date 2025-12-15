@@ -53,7 +53,7 @@ export default function ContestDetailPage() {
   const { data: sourceAssembly } = useReadContract({
     address: contestAddress,
     abi: deployedContracts[31337]?.Contest?.abi || [],
-    functionName: "sourceAssembly",
+    functionName: "assemblyAddress",
   });
 
   const { data: passportsAddress } = useReadContract({
@@ -134,8 +134,6 @@ export default function ContestDetailPage() {
 
     setIsVoting(true);
     try {
-      notification.loading("Casting vote...");
-
       await vote({
         address: contestAddress,
         abi: deployedContracts[31337]?.Contest?.abi || [],
