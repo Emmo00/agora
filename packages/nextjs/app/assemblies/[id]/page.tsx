@@ -6,9 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAssemblyDetail, useAssemblyContests, useAssemblyPassports, useAssemblyMembers, usePassportHolderCount } from "@/hooks/useAssemblyDetail";
+import { useAssemblyDetail, useAssemblyContests, useAssemblyPassports } from "@/hooks/useAssemblyDetail";
 import { formatDuration } from "@/utils/format";
-import { shortenAddress } from "@/utils/format";
 import { notification } from "@/utils/scaffold-eth";
 import CreatePassportTypeModal from "@/components/create-passport-type-modal";
 import CreateContestModal from "@/components/create-contest-modal";
@@ -16,12 +15,11 @@ import CreateContestModal from "@/components/create-contest-modal";
 export default function AssemblyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const assemblyAddress = (params.id as string) as `0x${string}`;
+  const assemblyAddress = params.id as string as `0x${string}`;
   const [activeTab, setActiveTab] = useState("contests");
   const [showCreatePassportModal, setShowCreatePassportModal] = useState(false);
   const [showCreateContestModal, setShowCreateContestModal] = useState(false);
   const [sharedContestId, setSharedContestId] = useState<string>("");
-  const [selectedPassportFilter, setSelectedPassportFilter] = useState<number | null>(null);
 
   // Fetch assembly data
   const { assemblyData, isLoading: assemblyLoading, isAdmin } = useAssemblyDetail(assemblyAddress);
@@ -32,12 +30,6 @@ export default function AssemblyDetailPage() {
   // Fetch passports
   const { passports, isLoading: passportsLoading, refetch: refetchPassports } = useAssemblyPassports(
     (assemblyData?.passportsAddress as `0x${string}`) || null
-  );
-
-  // Fetch members
-  const { members, isLoading: membersLoading } = useAssemblyMembers(
-    assemblyAddress,
-    assemblyData?.passportsAddress ? [assemblyData.passportsAddress as `0x${string}`] : []
   );
 
   // Sort contests: active first, then by end time

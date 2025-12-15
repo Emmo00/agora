@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useScaffoldReadContract } from "@/hooks/scaffold-eth";
 import { useReadContracts } from "wagmi";
-import { useEffect } from "react";
 import { fetchFromIPFS, convertIPFSUrl } from "@/utils/ipfs";
 
 interface AssemblyDisplay {

@@ -104,10 +104,6 @@ export default function CreatePassportTypeModal({
     reader.readAsText(file);
   };
 
-  const validateAddresses = (addresses: string[]): string[] => {
-    return addresses.filter((addr) => addr.match(/^0x[a-fA-F0-9]{40}$/));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

@@ -113,13 +113,13 @@ export default function ContestDetailPage() {
   // Check if user has required passports
   const isGated = requiredPassports && requiredPassports.length > 0;
 
-  const { data: holdsRequiredPassport } = useReadContract({
-    address: passportsAddress,
-    abi: deployedContracts[31337]?.AssemblyPassports?.abi || [],
-    functionName: "holdsAnyPassport",
-    args: [userAddress || "0x0", requiredPassports || []],
-    query: { enabled: isConnected && isGated },
-  });
+  // const { data: holdsRequiredPassport } = useReadContract({
+  //   address: passportsAddress,
+  //   abi: deployedContracts[31337]?.AssemblyPassports?.abi || [],
+  //   functionName: "holdsAnyPassport",
+  //   args: [userAddress || "0x0", requiredPassports || []],
+  //   query: { enabled: isConnected && isGated },
+  // });
 
   // Vote function
   const { writeContractAsync: vote } = useWriteContract();
