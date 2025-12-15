@@ -41,17 +41,6 @@ export default function AssemblyDetailPage() {
     });
   }, [contests]);
 
-  // Auto-refetch passport data when Members tab is active (to show updated holder counts after minting)
-  useEffect(() => {
-    if (activeTab !== "members") return;
-
-    const interval = setInterval(() => {
-      refetchPassports();
-    }, 2000); // Refetch every 2 seconds while viewing Members tab
-
-    return () => clearInterval(interval);
-  }, [activeTab, refetchPassports]);
-
   if (assemblyLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
@@ -97,10 +86,9 @@ export default function AssemblyDetailPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-          <TabsList className="font-mono grid w-full grid-cols-3 mb-8">
+          <TabsList className="font-mono grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="contests">VOTES</TabsTrigger>
             <TabsTrigger value="passports">MEMBERSHIPS</TabsTrigger>
-            <TabsTrigger value="members">MEMBERS</TabsTrigger>
           </TabsList>
 
           {/* Votes Tab */}
@@ -269,52 +257,6 @@ export default function AssemblyDetailPage() {
                   No membership types yet. {isAdmin && "Create one to gate voting!"}
                 </p>
               </Card>
-            )}
-          </TabsContent>
-
-          {/* Members Tab */}
-          <TabsContent value="members" className="space-y-4">
-            <div className="mb-6">
-              <p className="text-sm text-muted-foreground font-mono mb-3">
-                PASSPORT HOLDERS BY TYPE
-              </p>
-            </div>
-
-            {passports.length === 0 ? (
-              <Card className="p-8 border border-border text-center">
-                <p className="text-sm text-muted-foreground font-mono">
-                  No passport types created yet
-                </p>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {passports.map((passport) => (
-                  <Card key={passport.tokenId} className="p-4 border border-border">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-mono font-semibold text-sm mb-1">
-                          {passport.name}
-                        </h3>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold">
-                            {passport.holders}
-                          </span>
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {passport.holders === 1 ? "holder" : "holders"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="pt-3 border-t border-border">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {passport.isOpen ? "🔓 Open" : "🔒 Allowlist"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
             )}
           </TabsContent>
         </Tabs>
