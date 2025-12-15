@@ -1,31 +1,49 @@
 /**
- * IPFS utilities for uploading and fetching data
+ * IPFS utility functions for fetching and uploading data
+ * Uses backend API routes to keep Pinata JWT secrets secure
  */
 
-export const uploadImageToIPFS = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append("file", file);
+export async function fetchFromIPFS(uri: string): Promise<any> {
+  if (!uri) return null;
 
-  try {
-    const response = await fetch("/api/upload/image", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.ipfsHash;
-  } catch (error) {
-    console.error("Error uploading image to IPFS:", error);
-    throw error;
+  // Handle different URI formats
+  let url = uri;
+  if (uri.startsWith("ipfs://")) {
+    // Use Pinata gateway from environment or fallback to public gateway
+    const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY || "ipfs.io";
+    url = `https://${gateway}/ipfs/${uri.slice(7)}`;
   }
-};
 
-export const uploadToIPFS = async (data: unknown): Promise<string> => {
   try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch from IPFS: ${response.statusText}`);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to fetch from IPFS:", error);
+    return null;
+  }
+}
+
+export function convertIPFSUrl(uri: string): string {
+  if (!uri) return "";
+  if (uri.startsWith("ipfs://")) {
+    const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY || "ipfs.io";
+    return `https://${gateway}/ipfs/${uri.slice(7)}`;
+  }
+  return uri;
+}
+
+/**
+ * Upload metadata to IPFS via backend API
+ * The backend securely handles the Pinata JWT
+ */
+export async function uploadToIPFS(data: object): Promise<string> {
+  try {
+    console.log("Uploading metadata to backend...");
+    
     const response = await fetch("/api/upload/metadata", {
       method: "POST",
       headers: {
@@ -35,41 +53,49 @@ export const uploadToIPFS = async (data: unknown): Promise<string> => {
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
+      const error = await response.json();
+      throw new Error(error.error || "Failed to upload metadata");
     }
 
     const result = await response.json();
-    return result.ipfsHash;
+    console.log("Metadata uploaded successfully:", result.uri);
+    return result.uri; // Returns ipfs://CID format
   } catch (error) {
-    console.error("Error uploading metadata to IPFS:", error);
+    console.error("Failed to upload to IPFS:", error);
     throw error;
   }
-};
+}
 
-export const fetchFromIPFS = async (ipfsHash: string): Promise<unknown> => {
+/**
+ * Upload image file to IPFS via backend API
+ * The backend securely handles the Pinata JWT using the Pinata SDK
+ */
+export async function uploadImageToIPFS(file: File): Promise<string> {
   try {
-    const url = convertIPFSUrl(ipfsHash);
-    const response = await fetch(url);
+    console.log("Uploading image file:", file.name);
+    
+    // Create FormData with the file
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Send to backend API which handles Pinata SDK upload
+    const response = await fetch("/api/upload/image", {
+      method: "POST",
+      body: formData,
+    });
 
     if (!response.ok) {
-      throw new Error(`Fetch failed: ${response.statusText}`);
+      const error = await response.json();
+      throw new Error(error.error || "Failed to upload image");
     }
 
-    return await response.json();
+    const result = await response.json();
+    console.log("Image uploaded successfully:", result.uri);
+    
+    // Return IPFS URI
+    return result.uri; // Returns ipfs://CID format
   } catch (error) {
-    console.error("Error fetching from IPFS:", error);
+    console.error("Failed to upload image to IPFS:", error);
     throw error;
   }
-};
-
-export const convertIPFSUrl = (ipfsHash: string): string => {
-  if (ipfsHash.startsWith("ipfs://")) {
-    return `https://gateway.pinata.cloud/ipfs/${ipfsHash.replace("ipfs://", "")}`;
-  }
-
-  if (ipfsHash.startsWith("Qm")) {
-    return `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-  }
-
-  return ipfsHash;
-};
+}

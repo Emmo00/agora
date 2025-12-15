@@ -16,6 +16,24 @@ const nextConfig: NextConfig = {
   },
 };
 
+// Configure images for IPFS and external sources
+nextConfig.images = {
+  remotePatterns: [
+    {
+      protocol: "https",
+      hostname: "*.mypinata.cloud",
+    },
+    {
+      protocol: "https",
+      hostname: "gateway.pinata.cloud",
+    },
+    {
+      protocol: "https",
+      hostname: "ipfs.io",
+    },
+  ],
+};
+
 const isIpfs = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
 
 if (isIpfs) {
