@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,17 @@ export default function AssemblyDetailPage() {
       return Number(b.votingEnd) - Number(a.votingEnd);
     });
   }, [contests]);
+
+  // Auto-refetch passport data when Members tab is active (to show updated holder counts after minting)
+  useEffect(() => {
+    if (activeTab !== "members") return;
+
+    const interval = setInterval(() => {
+      refetchPassports();
+    }, 2000); // Refetch every 2 seconds while viewing Members tab
+
+    return () => clearInterval(interval);
+  }, [activeTab, refetchPassports]);
 
   if (assemblyLoading) {
     return (
