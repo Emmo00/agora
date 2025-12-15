@@ -8,7 +8,6 @@ import { WrongNetworkDropdown } from "./WrongNetworkDropdown";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Balance } from "@scaffold-ui/components";
 import { Address } from "viem";
-import { useNetworkColor } from "~~/hooks/scaffold-eth";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 
@@ -16,7 +15,6 @@ import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
  * Custom Wagmi Connect Button (watch balance + custom design)
  */
 export const RainbowKitCustomConnectButton = () => {
-  const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
 
   return (
@@ -32,7 +30,11 @@ export const RainbowKitCustomConnectButton = () => {
             {(() => {
               if (!connected) {
                 return (
-                  <button className="btn btn-primary btn-sm" onClick={openConnectModal} type="button">
+                  <button
+                    className="btn btn-primary btn-sm outline-1 outline-gray-500 font-mono text-xs bg-transparent rounded-none text-black"
+                    onClick={openConnectModal}
+                    type="button"
+                  >
                     Connect Wallet
                   </button>
                 );
@@ -51,9 +53,10 @@ export const RainbowKitCustomConnectButton = () => {
                         minHeight: "0",
                         height: "auto",
                         fontSize: "0.8em",
+                        color: "black",
                       }}
                     />
-                    <span className="text-xs" style={{ color: networkColor }}>
+                    <span className="text-xs" style={{ color: "black" }}>
                       {chain.name}
                     </span>
                   </div>

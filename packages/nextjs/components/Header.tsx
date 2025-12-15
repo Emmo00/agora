@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 
 export default function Header() {
   return (
@@ -9,16 +9,12 @@ export default function Header() {
           <div className="w-8 h-8 border-2 border-foreground"></div>
           <span className="font-mono font-bold text-lg">AGORA</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-12">
           <Link href="/assemblies" className="font-mono text-sm hover:text-muted-foreground transition-colors">
             Assemblies
           </Link>
-          <Link href="/contests" className="font-mono text-sm hover:text-muted-foreground transition-colors">
-            Contests
-          </Link>
-          <Button variant="outline" className="font-mono text-xs bg-transparent">
-            CONNECT WALLET
-          </Button>
+          <FaucetButton />
+          <RainbowKitCustomConnectButton />
         </nav>
       </div>
     </header>
