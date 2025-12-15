@@ -45,10 +45,23 @@ export function useAssemblyDetail(assemblyAddress: `0x${string}`) {
   const [error, setError] = useState<string | null>(null);
 
   // 1. Get assembly info
-  const { data: assemblyInfo } = useScaffoldReadContract({
-    contractName: "Assembly",
-    functionName: "getInfo",
+  const { data: assemblyInfo } = useReadContract({
     address: assemblyAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "getInfo",
+        outputs: [
+          { internalType: "contract IAssemblyPassports", name: "", type: "address" },
+          { internalType: "string", name: "", type: "string" },
+          { internalType: "uint256", name: "", type: "uint256" },
+          { internalType: "uint256", name: "", type: "uint256" },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "getInfo",
   });
 
   // 2. Fetch metadata from IPFS
@@ -90,12 +103,20 @@ export function useAssemblyDetail(assemblyAddress: `0x${string}`) {
   }, [assemblyInfo, assemblyAddress]);
 
   // 3. Check if user is admin
-  const { data: isAdmin } = useScaffoldReadContract({
-    contractName: "Assembly",
-    functionName: "isAdmin",
+  const { data: isAdmin } = useReadContract({
     address: assemblyAddress,
-    args: [userAddress],
-    query: { enabled: isConnected },
+    abi: [
+      {
+        inputs: [{ internalType: "address", name: "", type: "address" }],
+        name: "isAdmin",
+        outputs: [{ internalType: "bool", name: "", type: "bool" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "isAdmin",
+    args: [userAddress || ("0x0" as `0x${string}`)],
+    query: { enabled: isConnected && !!assemblyAddress },
   });
 
   return {
@@ -116,17 +137,33 @@ export function useAssemblyContests(assemblyAddress: `0x${string}`) {
   const [error, setError] = useState<string | null>(null);
 
   // Get all contests
-  const { data: allContestAddresses } = useScaffoldReadContract({
-    contractName: "Assembly",
-    functionName: "getAllContests",
+  const { data: allContestAddresses } = useReadContract({
     address: assemblyAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "getAllContests",
+        outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "getAllContests",
   });
 
   // Get active contests
-  const { data: activeContestAddresses } = useScaffoldReadContract({
-    contractName: "Assembly",
-    functionName: "getActiveContests",
+  const { data: activeContests } = useReadContract({
     address: assemblyAddress,
+    abi: [
+      {
+        inputs: [],
+        name: "getActiveContests",
+        outputs: [{ internalType: "address[]", name: "", type: "address[]" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "getActiveContests",
   });
 
   // Fetch contest details for each
@@ -288,7 +325,7 @@ export function useAssemblyContests(assemblyAddress: `0x${string}`) {
       setError(err instanceof Error ? err.message : "Failed to process contests");
       setIsLoading(false);
     }
-  }, [contestsData, allContestAddresses, activeContestAddresses]);
+  }, [contestsData, allContestAddresses, activeContests]);
 
   return { contests, isLoading, error };
 }
@@ -365,6 +402,25 @@ export function useAssemblyPassports(passportsAddress: `0x${string}` | null) {
     query: { enabled: isConnected && !!passportsAddress && passportTypeIds.length > 0 },
   });
 
+  // Get total supply (holder count) for each passport
+  const { data: totalSupplyData, refetch: refetchTotalSupply } = useReadContracts({
+    contracts: passportTypeIds.map((id) => ({
+      address: passportsAddress || ("0x0" as `0x${string}`),
+      abi: [
+        {
+          inputs: [{ internalType: "uint256", name: "id", type: "uint256" }],
+          name: "totalSupply",
+          outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ] as const,
+      functionName: "totalSupply",
+      args: [BigInt(id)],
+    })),
+    query: { enabled: !!passportsAddress && passportTypeIds.length > 0 },
+  });
+
   useEffect(() => {
     if (!passportTypesData) {
       setPassports([]);
@@ -378,6 +434,7 @@ export function useAssemblyPassports(passportsAddress: `0x${string}` | null) {
           const [name, uri, isOpen, exists] = data.result as [string, string, boolean, boolean];
           const tokenId = index + 1;
           const userBalance = userPassportBalances?.[index]?.result as bigint;
+          const supply = totalSupplyData?.[index]?.result as bigint;
 
           if (!exists) return null;
 
@@ -387,7 +444,7 @@ export function useAssemblyPassports(passportsAddress: `0x${string}` | null) {
             uri: uri || "",
             isOpen: isOpen || false,
             userHolds: (userBalance || 0n) > 0n,
-            holders: 0, // Would need additional contract calls
+            holders: Number(supply || 0n),
           };
         })
         .filter((p): p is PassportType => p !== null);
@@ -398,11 +455,74 @@ export function useAssemblyPassports(passportsAddress: `0x${string}` | null) {
       console.error("Error processing passports:", err);
       setIsLoading(false);
     }
-  }, [passportTypesData, userPassportBalances]);
+  }, [passportTypesData, userPassportBalances, totalSupplyData]);
 
   const refetch = async () => {
-    await Promise.all([refetchNextTokenId(), refetchPassportTypes(), refetchUserPassports()]);
+    await Promise.all([refetchNextTokenId(), refetchPassportTypes(), refetchUserPassports(), refetchTotalSupply()]);
   };
 
   return { passports, isLoading, refetch };
+}
+
+export interface Member {
+  address: string;
+  passports: number[]; // token IDs of passports held
+  passportNames: string[];
+  isAdmin: boolean;
+}
+
+/**
+ * Hook to fetch members (passport holders) of an assembly
+ * Uses a simplified approach - would need The Graph for full member enumeration
+ */
+export function useAssemblyMembers(assemblyAddress: `0x${string}` | null, passportAddresses: `0x${string}`[]) {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Due to limitations in querying all holders directly on-chain,
+    // we show an empty list by default with note that proper indexing is needed
+    // In production, use The Graph or similar indexing service to query Transfer events
+
+    setMembers([]);
+    setIsLoading(false);
+  }, [assemblyAddress, passportAddresses]);
+
+  return { members, isLoading };
+}
+
+/**
+ * Hook to fetch member count by passport type (total supply)
+ */
+export function usePassportHolderCount(
+  passportAddress: `0x${string}` | null,
+  tokenId: number
+): number {
+  const [holderCount, setHolderCount] = useState(0);
+
+  const { data: totalSupply } = useReadContract({
+    address: passportAddress || "0x0",
+    abi: [
+      {
+        inputs: [{ internalType: "uint256", name: "id", type: "uint256" }],
+        name: "totalSupply",
+        outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+      },
+    ] as const,
+    functionName: "totalSupply",
+    args: [BigInt(tokenId)],
+    query: {
+      enabled: !!passportAddress,
+    },
+  });
+
+  useEffect(() => {
+    if (totalSupply) {
+      setHolderCount(Number(totalSupply));
+    }
+  }, [totalSupply]);
+
+  return holderCount;
 }

@@ -6,8 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAssemblyDetail, useAssemblyContests, useAssemblyPassports } from "@/hooks/useAssemblyDetail";
+import { useAssemblyDetail, useAssemblyContests, useAssemblyPassports, useAssemblyMembers, usePassportHolderCount } from "@/hooks/useAssemblyDetail";
 import { formatDuration } from "@/utils/format";
+import { shortenAddress } from "@/utils/format";
 import { notification } from "@/utils/scaffold-eth";
 import CreatePassportTypeModal from "@/components/create-passport-type-modal";
 import CreateContestModal from "@/components/create-contest-modal";
@@ -20,6 +21,7 @@ export default function AssemblyDetailPage() {
   const [showCreatePassportModal, setShowCreatePassportModal] = useState(false);
   const [showCreateContestModal, setShowCreateContestModal] = useState(false);
   const [sharedContestId, setSharedContestId] = useState<string>("");
+  const [selectedPassportFilter, setSelectedPassportFilter] = useState<number | null>(null);
 
   // Fetch assembly data
   const { assemblyData, isLoading: assemblyLoading, isAdmin } = useAssemblyDetail(assemblyAddress);
@@ -30,6 +32,12 @@ export default function AssemblyDetailPage() {
   // Fetch passports
   const { passports, isLoading: passportsLoading, refetch: refetchPassports } = useAssemblyPassports(
     (assemblyData?.passportsAddress as `0x${string}`) || null
+  );
+
+  // Fetch members
+  const { members, isLoading: membersLoading } = useAssemblyMembers(
+    assemblyAddress,
+    assemblyData?.passportsAddress ? [assemblyData.passportsAddress as `0x${string}`] : []
   );
 
   // Sort contests: active first, then by end time
@@ -265,32 +273,46 @@ export default function AssemblyDetailPage() {
           <TabsContent value="members" className="space-y-4">
             <div className="mb-6">
               <p className="text-sm text-muted-foreground font-mono mb-3">
-                MEMBERS ({assemblyData.adminCount} admins)
+                PASSPORT HOLDERS BY TYPE
               </p>
-              <div className="flex flex-wrap gap-2 mb-6">
-                <Button variant="outline" className="font-mono text-xs bg-transparent" size="sm">
-                  All
-                </Button>
+            </div>
+
+            {passports.length === 0 ? (
+              <Card className="p-8 border border-border text-center">
+                <p className="text-sm text-muted-foreground font-mono">
+                  No passport types created yet
+                </p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {passports.map((passport) => (
-                  <Button
-                    key={passport.tokenId}
-                    variant="outline"
-                    className="font-mono text-xs bg-transparent"
-                    size="sm"
-                  >
-                    {passport.name}
-                  </Button>
+                  <Card key={passport.tokenId} className="p-4 border border-border">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-mono font-semibold text-sm mb-1">
+                          {passport.name}
+                        </h3>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold">
+                            {passport.holders}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {passport.holders === 1 ? "holder" : "holders"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-border">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {passport.isOpen ? "🔓 Open" : "🔒 Allowlist"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
                 ))}
               </div>
-            </div>
-            <Card className="p-8 border border-border text-center">
-              <p className="text-sm text-muted-foreground font-mono mb-4">
-                Member list will be loaded from contract data
-              </p>
-              <p className="text-xs text-muted-foreground font-mono">
-                Requires querying all passport holders and their balances
-              </p>
-            </Card>
+            )}
           </TabsContent>
         </Tabs>
 
