@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export default function ContestDetailPage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [showShareCopied, setShowShareCopied] = useState(false);
+  const [assemblyName, setAssemblyName] = useState<string | null>(null);
 
   // Fetch contest data
   const { data: prompt } = useReadContract({
@@ -55,6 +56,39 @@ export default function ContestDetailPage() {
     abi: deployedContracts[31337]?.Contest?.abi || [],
     functionName: "assemblyAddress",
   });
+
+  // Fetch assembly info to get metadata URI
+  const { data: assemblyInfo } = useReadContract({
+    address: sourceAssembly as `0x${string}` | undefined,
+    abi: deployedContracts[31337]?.Assembly?.abi || [],
+    functionName: "getInfo",
+    query: { enabled: !!sourceAssembly },
+  });
+
+  // Fetch assembly metadata from IPFS
+  useEffect(() => {
+    if (!assemblyInfo) return;
+
+    const metadataURI = assemblyInfo[1];
+    if (!metadataURI) return;
+
+    const fetchMetadata = async () => {
+      try {
+        let url = metadataURI;
+        if (metadataURI.startsWith("ipfs://")) {
+          url = `https://ipfs.io/ipfs/${metadataURI.slice(7)}`;
+        }
+
+        const response = await fetch(url);
+        const metadata = await response.json();
+        setAssemblyName(metadata.name || null);
+      } catch (error) {
+        console.error("Failed to fetch assembly metadata:", error);
+      }
+    };
+
+    fetchMetadata();
+  }, [assemblyInfo]);
 
   const { data: passportsAddress } = useReadContract({
     address: contestAddress,
@@ -215,7 +249,7 @@ export default function ContestDetailPage() {
           </Link>
           {" / "}
           <Link href={`/assemblies/${sourceAssembly}`} className="hover:text-foreground transition-colors">
-            Group
+            {assemblyName || "Loading..."}
           </Link>
           {" / "}
           <span className="text-foreground">Vote</span>
