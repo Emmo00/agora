@@ -5,113 +5,141 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useScaffoldReadContract } from "@/hooks/scaffold-eth";
+import { useReadContracts } from "wagmi";
+import { useEffect } from "react";
+import { fetchFromIPFS, convertIPFSUrl } from "@/utils/ipfs";
 
-const MOCK_ASSEMBLIES = [
-  {
-    id: "1",
-    name: "Protocol Governance",
-    description: "Core governance decisions for the protocol",
-    members: 234,
-    contests: 12,
-    activeVotes: 3,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-  {
-    id: "2",
-    name: "Community Treasury",
-    description: "Collective fund management and allocation decisions",
-    members: 145,
-    contests: 8,
-    activeVotes: 1,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-  {
-    id: "3",
-    name: "Feature Voting",
-    description: "Decide which features should be prioritized",
-    members: 89,
-    contests: 5,
-    activeVotes: 2,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-  {
-    id: "4",
-    name: "DAO Coordination",
-    description: "Cross-team coordination and strategic planning",
-    members: 156,
-    contests: 15,
-    activeVotes: 0,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-  {
-    id: "5",
-    name: "Research Initiative",
-    description: "Community research proposals and voting",
-    members: 67,
-    contests: 3,
-    activeVotes: 1,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-  {
-    id: "6",
-    name: "Grants Program",
-    description: "Fund allocation for community projects",
-    members: 112,
-    contests: 9,
-    activeVotes: 2,
-    image: "/placeholder.svg?height=80&width=80",
-  },
-];
+interface AssemblyDisplay {
+  address: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  contestCount: number;
+  adminCount: number;
+}
 
-type SortOption = "newest" | "members" | "active";
-type FilterOption = "all" | "my" | "activeVotes";
+const ITEMS_PER_PAGE = 10;
 
 export default function AssembliesPage() {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterOption>("all");
-  const [sort, setSort] = useState<SortOption>("newest");
   const [page, setPage] = useState(1);
+  const [allAssemblies, setAllAssemblies] = useState<AssemblyDisplay[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // 1. Get all assemblies from factory
+  const { data: allAssemblyAddresses } = useScaffoldReadContract({
+    contractName: "AgoraFactory",
+    functionName: "getAllAssemblies",
+  });
+
+  const assemblyAddresses = useMemo(() => (allAssemblyAddresses as string[]) || [], [allAssemblyAddresses]);
+
+  // 2. Get info for all assemblies using multicall
+  const { data: assembliesInfo } = useReadContracts({
+    contracts: assemblyAddresses.map((addr: string) => ({
+      address: addr as `0x${string}`,
+      abi: [
+        {
+          inputs: [],
+          name: "getInfo",
+          outputs: [
+            { internalType: "address", name: "passportsAddress", type: "address" },
+            { internalType: "string", name: "metadataURI", type: "string" },
+            { internalType: "uint256", name: "contestCount", type: "uint256" },
+            { internalType: "uint256", name: "adminCount", type: "uint256" },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+      ] as const,
+      functionName: "getInfo",
+    })),
+    query: {
+      enabled: assemblyAddresses.length > 0,
+    },
+  });
+
+  // 3. Fetch metadata from IPFS for each assembly
+  useEffect(() => {
+    if (!assembliesInfo || !assemblyAddresses.length) {
+      setAllAssemblies([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchMetadata = async () => {
+      setIsLoading(true);
+
+      try {
+        const data = await Promise.all(
+          assembliesInfo.map(async (info, index) => {
+            if (!info.result) {
+              return null;
+            }
+
+            // Result is a tuple: [passportsAddress, metadataURI, contestCount, adminCount]
+            const [, metadataURI, contestCountBigInt, adminCountBigInt] = info.result as [
+              string,
+              string,
+              bigint,
+              bigint,
+            ];
+
+            const contestCount = Number(contestCountBigInt || 0);
+            const adminCount = Number(adminCountBigInt || 0);
+
+            // Fetch metadata from IPFS
+            const metadata = await fetchFromIPFS(metadataURI);
+
+            return {
+              address: assemblyAddresses[index],
+              name: metadata?.name || "Unnamed Assembly",
+              description: metadata?.description || "",
+              imageUrl: convertIPFSUrl(metadata?.image || ""),
+              contestCount,
+              adminCount,
+            };
+          })
+        );
+
+        setAllAssemblies(data.filter((a): a is AssemblyDisplay => a !== null));
+      } catch (error) {
+        console.error("Error fetching assembly metadata:", error);
+        setAllAssemblies([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetadata();
+  }, [assembliesInfo, assemblyAddresses]);
+
+  // 4. Filter by search
   const filtered = useMemo(() => {
-    let result = MOCK_ASSEMBLIES;
-
-    // Search filter
-    if (search) {
-      result = result.filter(
-        a =>
-          a.name.toLowerCase().includes(search.toLowerCase()) ||
-          a.description.toLowerCase().includes(search.toLowerCase()),
-      );
+    if (!search.trim()) {
+      return allAssemblies;
     }
 
-    // Tab filter
-    if (filter === "activeVotes") {
-      result = result.filter(a => a.activeVotes > 0);
-    }
+    return allAssemblies.filter(
+      a =>
+        a.name.toLowerCase().includes(search.toLowerCase()) ||
+        a.description.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [allAssemblies, search]);
 
-    // Sort
-    if (sort === "newest") {
-      result = [...result].reverse();
-    } else if (sort === "members") {
-      result = [...result].sort((a, b) => b.members - a.members);
-    } else if (sort === "active") {
-      result = [...result].sort((a, b) => b.contests - a.contests);
-    }
-
-    return result;
-  }, [search, filter, sort]);
-
-  const itemsPerPage = 10;
-  const paginatedAssemblies = filtered.slice(0, page * itemsPerPage);
+  // 5. Paginate
+  const paginatedAssemblies = filtered.slice(0, page * ITEMS_PER_PAGE);
   const hasMore = paginatedAssemblies.length < filtered.length;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-12">
         <div className="mb-8">
-          <h1 className="text-4xl font-mono font-bold mb-6">ASSEMBLIES</h1>
+          <h1 className="text-4xl font-mono font-bold mb-2">ASSEMBLIES</h1>
+          <p className="text-muted-foreground mb-6">Browse and join assemblies on Agora</p>
           <Input
-            placeholder="Search assemblies..."
+            placeholder="Search assemblies by name or description..."
             value={search}
             onChange={e => {
               setSearch(e.target.value);
@@ -121,81 +149,72 @@ export default function AssembliesPage() {
           />
         </div>
 
-        <div className="mb-8 space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground font-mono mb-2">FILTERS</p>
-            <div className="flex flex-wrap gap-2">
-              {(["all", "my", "activeVotes"] as const).map(opt => (
-                <Button
-                  key={opt}
-                  variant={filter === opt ? "default" : "outline"}
-                  className="font-mono text-xs"
-                  onClick={() => {
-                    setFilter(opt);
-                    setPage(1);
-                  }}
-                >
-                  {opt === "all" ? "All" : opt === "my" ? "My Assemblies" : "Active Votes"}
-                </Button>
-              ))}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="inline-block border-2 border-primary border-t-transparent rounded-full w-8 h-8 animate-spin mb-4"></div>
+              <p className="text-muted-foreground font-mono">Loading assemblies...</p>
             </div>
           </div>
-
-          <div>
-            <p className="text-sm text-muted-foreground font-mono mb-2">SORT BY</p>
-            <div className="flex flex-wrap gap-2">
-              {(["newest", "members", "active"] as const).map(opt => (
-                <Button
-                  key={opt}
-                  variant={sort === opt ? "default" : "outline"}
-                  className="font-mono text-xs"
-                  onClick={() => {
-                    setSort(opt);
-                    setPage(1);
-                  }}
-                >
-                  {opt === "newest" ? "Newest" : opt === "members" ? "Most Members" : "Most Active"}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 mb-8">
-          {paginatedAssemblies.map(assembly => (
-            <Link key={assembly.id} href={`/assemblies/${assembly.id}`}>
-              <Card className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors">
-                <div className="flex gap-4">
-                  <img
-                    src={assembly.image || "/placeholder.svg"}
-                    alt={assembly.name}
-                    className="w-20 h-20 border border-border"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-mono font-semibold text-lg">{assembly.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-2">{assembly.description}</p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {assembly.members} members · {assembly.contests} contests · {assembly.activeVotes} active votes
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-
-        {hasMore && (
-          <div className="text-center">
-            <Button variant="outline" className="font-mono bg-transparent" onClick={() => setPage(p => p + 1)}>
-              LOAD MORE
-            </Button>
-          </div>
-        )}
-
-        {filtered.length === 0 && (
+        ) : allAssemblies.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground font-mono">No assemblies found</p>
+            <p className="text-muted-foreground font-mono mb-6">No assemblies found</p>
+            <Link href="/">
+              <Button className="font-mono">← Back Home</Button>
+            </Link>
           </div>
+        ) : (
+          <>
+            <div className="mb-6 text-sm text-muted-foreground font-mono">
+              Showing {Math.min(paginatedAssemblies.length, filtered.length)} of {filtered.length} assemblies
+            </div>
+
+            <div className="space-y-3 mb-8">
+              {paginatedAssemblies.map(assembly => (
+                <Link key={assembly.address} href={`/assembly/${assembly.address}`}>
+                  <Card className="p-4 border border-border hover:bg-muted cursor-pointer transition-colors">
+                    <div className="flex gap-4">
+                      {assembly.imageUrl && (
+                        <img
+                          src={assembly.imageUrl}
+                          alt={assembly.name}
+                          className="w-20 h-20 border border-border rounded object-cover flex-shrink-0"
+                          onError={(e) => {
+                            // Fallback to placeholder if image fails to load
+                            e.currentTarget.src = "/placeholder.svg?height=80&width=80";
+                          }}
+                        />
+                      )}
+                      {!assembly.imageUrl && (
+                        <div className="w-20 h-20 border border-border bg-muted rounded flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs text-muted-foreground">No image</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-mono font-semibold text-lg truncate">{assembly.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{assembly.description}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {assembly.adminCount} admin{assembly.adminCount !== 1 ? "s" : ""} · {assembly.contestCount} contests
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  className="font-mono bg-transparent"
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  LOAD MORE
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
