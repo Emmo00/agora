@@ -28,9 +28,9 @@ const _sourceSerif_4 = V0_Font_Source_Serif_4({
 });
 
 export const metadata = getMetadata({
-  title: "Agora - Easy onchain Governance",
+  title: "Agora - Make decisions with your community",
   description:
-    "Agora is a minimalist onchain governance primitive for making collective decision-making easy, fast, and accessible.",
+    "Create groups, issue memberships, run votes. Simple, transparent governance for everyone. No tokens required.",
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {

@@ -135,10 +135,10 @@ export default function AssembliesPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-12">
         <div className="mb-8">
-          <h1 className="text-4xl font-mono font-bold mb-2">ASSEMBLIES</h1>
-          <p className="text-muted-foreground mb-6">Browse and join assemblies on Agora</p>
+          <h1 className="text-4xl font-mono font-bold mb-2">GROUPS</h1>
+          <p className="text-muted-foreground mb-6">Browse and join groups on Agora</p>
           <Input
-            placeholder="Search assemblies by name or description..."
+            placeholder="Search groups by name or description..."
             value={search}
             onChange={e => {
               setSearch(e.target.value);
@@ -152,12 +152,12 @@ export default function AssembliesPage() {
           <div className="flex justify-center items-center py-12">
             <div className="text-center">
               <div className="inline-block border-2 border-primary border-t-transparent rounded-full w-8 h-8 animate-spin mb-4"></div>
-              <p className="text-muted-foreground font-mono">Loading assemblies...</p>
+              <p className="text-muted-foreground font-mono">Loading groups...</p>
             </div>
           </div>
         ) : allAssemblies.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground font-mono mb-6">No assemblies found</p>
+            <p className="text-muted-foreground font-mono mb-6">No groups found</p>
             <Link href="/">
               <Button className="font-mono">← Back Home</Button>
             </Link>
@@ -165,7 +165,7 @@ export default function AssembliesPage() {
         ) : (
           <>
             <div className="mb-6 text-sm text-muted-foreground font-mono">
-              Showing {Math.min(paginatedAssemblies.length, filtered.length)} of {filtered.length} assemblies
+              Showing {Math.min(paginatedAssemblies.length, filtered.length)} of {filtered.length} groups
             </div>
 
             <div className="space-y-3 mb-8">
@@ -193,7 +193,7 @@ export default function AssembliesPage() {
                         <h3 className="font-mono font-semibold text-lg truncate">{assembly.name}</h3>
                         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{assembly.description}</p>
                         <p className="text-xs text-muted-foreground font-mono">
-                          {assembly.adminCount} admin{assembly.adminCount !== 1 ? "s" : ""} · {assembly.contestCount} contests
+                          {assembly.adminCount} member{assembly.adminCount !== 1 ? "s" : ""} · {assembly.contestCount} votes
                         </p>
                       </div>
                     </div>

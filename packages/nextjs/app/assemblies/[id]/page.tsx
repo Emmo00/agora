@@ -45,7 +45,7 @@ export default function AssemblyDetailPage() {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="animate-pulse">
-          <p className="font-mono text-muted-foreground">Loading assembly...</p>
+          <p className="font-mono text-muted-foreground">Loading group...</p>
         </div>
       </div>
     );
@@ -54,7 +54,7 @@ export default function AssemblyDetailPage() {
   if (!assemblyData) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        <p className="font-mono text-muted-foreground">Assembly not found</p>
+        <p className="font-mono text-muted-foreground">Group not found</p>
       </div>
     );
   }
@@ -87,12 +87,12 @@ export default function AssemblyDetailPage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
           <TabsList className="font-mono grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="contests">CONTESTS</TabsTrigger>
-            <TabsTrigger value="passports">PASSPORTS</TabsTrigger>
+            <TabsTrigger value="contests">VOTES</TabsTrigger>
+            <TabsTrigger value="passports">MEMBERSHIPS</TabsTrigger>
             <TabsTrigger value="members">MEMBERS</TabsTrigger>
           </TabsList>
 
-          {/* Contests Tab */}
+          {/* Votes Tab */}
           <TabsContent value="contests" className="space-y-4">
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground font-mono">
@@ -103,7 +103,7 @@ export default function AssemblyDetailPage() {
                   onClick={() => setShowCreateContestModal(true)}
                   className="font-mono text-sm"
                 >
-                  + CREATE CONTEST
+                  + CREATE A VOTE
                 </Button>
               )}
             </div>
@@ -189,22 +189,22 @@ export default function AssemblyDetailPage() {
             ) : (
               <Card className="p-8 border border-border text-center">
                 <p className="text-sm text-muted-foreground font-mono">
-                  No contests yet. {isAdmin && "Create one to get started!"}
+                  No votes yet. {isAdmin && "Create one to get started!"}
                 </p>
               </Card>
             )}
           </TabsContent>
 
-          {/* Passports Tab */}
+          {/* Memberships Tab */}
           <TabsContent value="passports" className="space-y-4">
             <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-muted-foreground font-mono">PASSPORT TYPES ({passports.length})</p>
+              <p className="text-sm text-muted-foreground font-mono">MEMBERSHIP TYPES ({passports.length})</p>
               {isAdmin && (
                 <Button
                   className="font-mono text-sm"
                   onClick={() => setShowCreatePassportModal(true)}
                 >
-                  + CREATE PASSPORT TYPE
+                  + CREATE MEMBERSHIP TYPE
                 </Button>
               )}
             </div>
@@ -247,7 +247,7 @@ export default function AssemblyDetailPage() {
                         }
                       }}
                     >
-                      {passport.userHolds ? "✓ YOU HOLD THIS" : passport.isOpen ? "MINT NOW" : "CHECK ELIGIBILITY"}
+                      {passport.userHolds ? "✓ YOU HAVE THIS" : passport.isOpen ? "GET MEMBERSHIP" : "CHECK ELIGIBILITY"}
                     </Button>
                   </Card>
                 ))}
@@ -255,7 +255,7 @@ export default function AssemblyDetailPage() {
             ) : (
               <Card className="p-8 border border-border text-center">
                 <p className="text-sm text-muted-foreground font-mono">
-                  No passport types yet. {isAdmin && "Create one to gate voting!"}
+                  No membership types yet. {isAdmin && "Create one to gate voting!"}
                 </p>
               </Card>
             )}

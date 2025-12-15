@@ -88,7 +88,7 @@ export default function CreateContestModal({
     setIsCreating(true);
 
     try {
-      notification.loading("Creating contest...");
+      notification.loading("Creating vote...");
 
       const args = [
         formData.prompt,
@@ -106,7 +106,7 @@ export default function CreateContestModal({
         args: args as any,
       });
 
-      notification.success("Contest created successfully! 🎉");
+      notification.success("Vote created successfully! 🎉");
 
       // Reset form
       setFormData({
@@ -121,9 +121,9 @@ export default function CreateContestModal({
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error("Error creating contest:", error);
+      console.error("Error creating vote:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to create contest";
+        error instanceof Error ? error.message : "Failed to create vote";
       notification.error(errorMessage);
     } finally {
       setIsCreating(false);
@@ -167,21 +167,21 @@ export default function CreateContestModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-mono">CREATE CONTEST</DialogTitle>
+          <DialogTitle className="font-mono">CREATE A VOTE</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Prompt */}
+          {/* Question */}
           <div>
             <Label htmlFor="prompt" className="font-mono text-sm">
-              PROMPT * {formData.prompt.length < 10 && formData.prompt.length > 0 && <span className="text-red-500">(need {10 - formData.prompt.length} more chars)</span>}
+              QUESTION * {formData.prompt.length < 10 && formData.prompt.length > 0 && <span className="text-red-500">(need {10 - formData.prompt.length} more chars)</span>}
             </Label>
             <input
               id="prompt"
               type="text"
               value={formData.prompt}
               onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-              placeholder="What question are you asking?"
+              placeholder="What decision should we make? e.g., Which feature should we build next?"
               className={`w-full px-3 py-2 border rounded font-mono text-sm ${
                 formData.prompt && formData.prompt.length < 10 
                   ? "border-red-500 bg-red-50 dark:bg-red-950"
@@ -345,9 +345,9 @@ export default function CreateContestModal({
           {/* Passport Selection */}
           {formData.votingMode === "gated" && passportTypeIds.length > 0 && (
             <div>
-              <Label className="font-mono text-sm mb-3 block">REQUIRED PASSPORTS</Label>
+              <Label className="font-mono text-sm mb-3 block">MEMBERSHIP PASSES</Label>
               <p className="text-xs text-muted-foreground font-mono mb-3">
-                Voters need ANY of the selected passports
+                Voters need ANY of the selected membership passes
               </p>
               <div className="space-y-2">
                 {passportTypeIds.map((id) => (
@@ -358,13 +358,13 @@ export default function CreateContestModal({
                       onChange={() => handleTogglePassport(id)}
                       className="w-4 h-4"
                     />
-                    <span className="font-mono text-sm">Passport {id}</span>
+                    <span className="font-mono text-sm">Membership Pass {id}</span>
                   </label>
                 ))}
               </div>
               {formData.requiredPassports.length === 0 && (
                 <p className="text-xs text-red-500 font-mono mt-2">
-                  Select at least one passport
+                  Select at least one membership pass
                 </p>
               )}
             </div>
@@ -388,7 +388,7 @@ export default function CreateContestModal({
                 Ends in {formData.durationDays}d {formData.durationHours}h
               </p>
               {formData.votingMode === "gated" && (
-                <p className="font-mono text-xs text-muted-foreground">🔒 Passport required</p>
+                <p className="font-mono text-xs text-muted-foreground">🔒 Membership pass required</p>
               )}
             </div>
           </div>
@@ -407,7 +407,7 @@ export default function CreateContestModal({
               disabled={!isValid || isCreating}
               className="font-mono text-sm"
             >
-              {isCreating ? "CREATING..." : "CREATE CONTEST"}
+              {isCreating ? "CREATING..." : "CREATE VOTE"}
             </Button>
           </div>
         </form>

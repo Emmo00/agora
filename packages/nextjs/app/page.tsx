@@ -38,22 +38,21 @@ export default function Home() {
         <section className="border-b border-border">
           <div className="max-w-6xl mx-auto px-4 py-16 md:py-24">
             <h1 className="text-5xl md:text-6xl font-mono font-bold mb-6 text-balance">
-              DECENTRALIZED GOVERNANCE AT SCALE
+              Make decisions with your community
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mb-8 leading-relaxed">
-              Agora enables communities to govern collectively. Create assemblies, run contests, and make decisions with
-              direct participation from your members.
+              Create groups. Issue memberships. Run votes. All onchain. Simple, transparent governance for everyone.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/assemblies">
-                <Button className="font-mono w-full sm:w-auto">EXPLORE ASSEMBLIES</Button>
+                <Button className="font-mono w-full sm:w-auto">BROWSE GROUPS</Button>
               </Link>
               <Button
                 variant="outline"
                 className="font-mono w-full sm:w-auto bg-transparent"
                 onClick={() => setShowCreateModal(true)}
               >
-                CREATE ASSEMBLY
+                CREATE A GROUP
               </Button>
             </div>
           </div>
@@ -65,28 +64,28 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div>
                 <p className="text-3xl font-mono font-bold">{assemblyCount}</p>
-                <p className="text-sm text-muted-foreground font-mono mt-2">Total Assemblies</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Groups Created</p>
               </div>
               <div>
                 <p className="text-3xl font-mono font-bold">{totalContests}</p>
-                <p className="text-sm text-muted-foreground font-mono mt-2">Total Contests</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Active Votes</p>
               </div>
               <div>
                 <p className="text-3xl font-mono font-bold">{totalMembers}</p>
-                <p className="text-sm text-muted-foreground font-mono mt-2">Total Members</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Memberships Issued</p>
               </div>
               <div>
                 <p className="text-3xl font-mono font-bold">{totalVotes}</p>
-                <p className="text-sm text-muted-foreground font-mono mt-2">Total Votes Cast</p>
+                <p className="text-sm text-muted-foreground font-mono mt-2">Votes Cast</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Recent Assemblies Section */}
+        {/* Recent Groups Section */}
         <section className="border-b border-border">
           <div className="max-w-6xl mx-auto px-4 py-12">
-            <h2 className="text-3xl font-mono font-bold mb-8">RECENT ASSEMBLIES</h2>
+            <h2 className="text-3xl font-mono font-bold mb-8">RECENT GROUPS</h2>
             <div className="space-y-3">
               {assembliesLoading ? (
                 <>
@@ -112,7 +111,7 @@ export default function Home() {
                         <div className="flex-1">
                           <h3 className="font-mono font-semibold text-lg">{assembly.name}</h3>
                           <p className="text-xs text-muted-foreground font-mono mt-2">
-                            {assembly.adminCount} admins · {assembly.contestCount} contests
+                            {assembly.adminCount} members · {assembly.contestCount} votes
                           </p>
                         </div>
                       </div>
@@ -121,14 +120,14 @@ export default function Home() {
                 ))
               ) : (
                 <Card className="p-8 border border-border text-center">
-                  <p className="text-sm text-muted-foreground font-mono">No assemblies found. Be the first to create one!</p>
+                  <p className="text-sm text-muted-foreground font-mono">No groups yet. Create the first one!</p>
                 </Card>
               )}
             </div>
             <div className="text-center mt-8">
               <Link href="/assemblies">
                 <Button variant="outline" className="font-mono bg-transparent">
-                  VIEW ALL ASSEMBLIES
+                  SEE ALL GROUPS →
                 </Button>
               </Link>
             </div>

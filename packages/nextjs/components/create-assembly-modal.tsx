@@ -114,8 +114,8 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
                 // Extract assembly address from topics[1]
                 const assemblyAddress = `0x${assemblyCreatedLog.topics[1].slice(-40)}`;
 
-                console.log("Assembly created at:", assemblyAddress);
-                notification.success("Assembly created successfully! 🎉");
+                console.log("Group created at:", assemblyAddress);
+                notification.success("Group created successfully! 🎉");
 
                 // Close modal and reset form
                 setIsOpen(false);
@@ -132,7 +132,7 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
                   router.push(`/assemblies/${assemblyAddress}`);
                 }, 500);
               } else {
-                notification.error("Failed to parse assembly address from transaction");
+                notification.error("Failed to parse group address from transaction");
               }
             },
           }
@@ -142,10 +142,10 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
         throw error;
       }
     } catch (error) {
-      console.error("Error creating assembly:", error);
+      console.error("Error creating group:", error);
       setIsUploading(false);
 
-      const errorMessage = error instanceof Error ? error.message : "Failed to create assembly";
+      const errorMessage = error instanceof Error ? error.message : "Failed to create group";
       notification.error(`Error: ${errorMessage}`);
     }
   };
@@ -161,23 +161,23 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
       </DialogTrigger>
       <DialogContent className="max-w-2xl border border-border bg-background max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-mono text-xl">CREATE ASSEMBLY</DialogTitle>
+          <DialogTitle className="font-mono text-xl">CREATE A GROUP</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Deploy a new onchain community with governance capabilities
+            Start your community. Issue memberships. Run votes. All stored permanently on the blockchain.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 pr-4">
-          {/* Assembly Name */}
+          {/* Group Name */}
           <div className="space-y-2">
             <Label htmlFor="name" className="font-mono text-sm">
-              ASSEMBLY NAME *
+              GROUP NAME *
             </Label>
             <Input
               id="name"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g., Protocol Governance"
+              placeholder="e.g., My Team, Community Council, Project DAO"
               className="font-mono"
               maxLength={50}
               required
@@ -196,7 +196,7 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
               id="description"
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Describe what this assembly is for..."
+              placeholder="What is this group about? Who can join? What decisions will you make together?"
               className="font-mono min-h-24"
               maxLength={500}
               required
@@ -260,7 +260,7 @@ export default function CreateAssemblyModal({ onClose, isOpen: isOpenProp }: Cre
               className="flex-1 font-mono"
               disabled={!isValid || isUploading || isCreating}
             >
-              {isUploading ? "UPLOADING..." : isCreating ? "CREATING..." : "CREATE ASSEMBLY"}
+              {isUploading ? "UPLOADING..." : isCreating ? "CREATING..." : "CREATE GROUP"}
             </Button>
           </div>
         </form>

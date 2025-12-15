@@ -11,9 +11,8 @@ export default function Header() {
         </Link>
         <nav className="hidden md:flex items-center gap-12">
           <Link href="/assemblies" className="font-mono text-sm hover:text-muted-foreground transition-colors">
-            Assemblies
+            Groups
           </Link>
-          <FaucetButton />
           <RainbowKitCustomConnectButton />
         </nav>
       </div>
