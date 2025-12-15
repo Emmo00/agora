@@ -1,299 +1,413 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useWriteContract, useReadContract } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const PRESET_DURATIONS = [
-  { label: "1d", value: 24 },
-  { label: "3d", value: 72 },
-  { label: "7d", value: 168 },
-  { label: "30d", value: 720 },
-];
-
-const MOCK_PASSPORTS = ["Member", "Contributor", "Core Team"];
+import deployedContracts from "@/contracts/deployedContracts";
+import { notification } from "@/utils/scaffold-eth";
 
 interface CreateContestModalProps {
-  onClose?: () => void;
-  isAdmin?: boolean;
+  assemblyAddress: `0x${string}`;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function CreateContestModal({ onClose, isAdmin = false }: CreateContestModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [options, setOptions] = useState(["", ""]);
-  const [durationHours, setDurationHours] = useState(24);
-  const [durationDays, setDurationDays] = useState(1);
-  const [votingMode, setVotingMode] = useState<"open" | "gated">("open");
-  const [selectedPassports, setSelectedPassports] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export default function CreateContestModal({
+  assemblyAddress,
+  isOpen,
+  onClose,
+  onSuccess,
+}: CreateContestModalProps) {
+  const [formData, setFormData] = useState({
+    prompt: "",
+    options: ["", ""],
+    durationDays: 7,
+    durationHours: 0,
+    votingMode: "open" as "open" | "gated",
+    requiredPassports: [] as number[],
+  });
+
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Get assembly's passports contract
+  const { data: assemblyInfo } = useReadContract({
+    address: assemblyAddress,
+    abi: deployedContracts[31337]?.Assembly?.abi || [],
+    functionName: "getInfo",
+  });
+
+  const passportsAddress = (assemblyInfo?.[0] as `0x${string}`) || null;
+
+  // Get available passport types
+  const { data: nextTokenId } = useReadContract({
+    address: passportsAddress,
+    abi: deployedContracts[31337]?.AssemblyPassports?.abi || [],
+    functionName: "nextTokenId",
+    query: { enabled: !!passportsAddress },
+  });
+
+  const passportTypeIds = useMemo(() => {
+    if (!nextTokenId) return [];
+    return Array.from({ length: Number(nextTokenId) - 1 }, (_, i) => i + 1);
+  }, [nextTokenId]);
+
+  // Calculate duration in seconds
+  const durationInSeconds = useMemo(() => {
+    return formData.durationDays * 24 * 60 * 60 + formData.durationHours * 60 * 60;
+  }, [formData.durationDays, formData.durationHours]);
+
+  // Validation
+  const isValid = useMemo(() => {
+    const promptValid = formData.prompt.length >= 10 && formData.prompt.length <= 200;
+    const optionsValid = formData.options.length >= 2 && formData.options.every((opt) => opt.trim().length > 0);
+    const durationValid = durationInSeconds >= 3600;
+    const votingModeValid = formData.votingMode === "open" || formData.requiredPassports.length > 0;
+    
+    return promptValid && optionsValid && durationValid && votingModeValid;
+  }, [formData, durationInSeconds]);
+
+  // Create contest contract interaction
+  const { writeContractAsync: createContest } = useWriteContract();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isValid) {
+      notification.error("Please fill in all required fields correctly");
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      notification.loading("Creating contest...");
+
+      const args = [
+        formData.prompt,
+        formData.options,
+        BigInt(durationInSeconds),
+        formData.votingMode === "gated"
+          ? formData.requiredPassports.map((id) => BigInt(id))
+          : [],
+      ];
+
+      await createContest({
+        address: assemblyAddress,
+        abi: deployedContracts[31337]?.Assembly?.abi || [],
+        functionName: "createContest",
+        args: args as any,
+      });
+
+      notification.success("Contest created successfully! 🎉");
+
+      // Reset form
+      setFormData({
+        prompt: "",
+        options: ["", ""],
+        durationDays: 7,
+        durationHours: 0,
+        votingMode: "open",
+        requiredPassports: [],
+      });
+
+      onClose();
+      onSuccess?.();
+    } catch (error) {
+      console.error("Error creating contest:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create contest";
+      notification.error(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleAddOption = () => {
-    if (options.length < 10) {
-      setOptions([...options, ""]);
+    if (formData.options.length < 10) {
+      setFormData({
+        ...formData,
+        options: [...formData.options, ""],
+      });
     }
   };
 
   const handleRemoveOption = (index: number) => {
-    setOptions(options.filter((_, i) => i !== index));
+    if (formData.options.length > 2) {
+      setFormData({
+        ...formData,
+        options: formData.options.filter((_, i) => i !== index),
+      });
+    }
   };
 
   const handleUpdateOption = (index: number, value: string) => {
-    const newOptions = [...options];
+    const newOptions = [...formData.options];
     newOptions[index] = value;
-    setOptions(newOptions);
+    setFormData({ ...formData, options: newOptions });
   };
 
-  const handleTogglePassport = (passport: string) => {
-    setSelectedPassports(prev => (prev.includes(passport) ? prev.filter(p => p !== passport) : [...prev, passport]));
+  const handleTogglePassport = (tokenId: number) => {
+    setFormData({
+      ...formData,
+      requiredPassports: formData.requiredPassports.includes(tokenId)
+        ? formData.requiredPassports.filter((id) => id !== tokenId)
+        : [...formData.requiredPassports, tokenId],
+    });
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    // Simulate contract interaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    setIsLoading(false);
-    setIsOpen(false);
-    onClose?.();
-  };
-
-  const validOptions = options.filter(o => o.trim().length > 0);
-  const isValid =
-    prompt.length >= 10 &&
-    prompt.length <= 200 &&
-    validOptions.length >= 2 &&
-    validOptions.length <= 10 &&
-    (votingMode === "open" || selectedPassports.length > 0);
-
-  const totalHours = durationDays * 24 + durationHours;
-  const endDate = new Date(Date.now() + totalHours * 60 * 60 * 1000);
-
-  if (!isAdmin) {
-    return null;
-  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="font-mono font-semibold">+ CREATE CONTEST</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl border border-border bg-background max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-mono text-xl">CREATE CONTEST</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Create a new voting contest for your assembly
-          </DialogDescription>
+          <DialogTitle className="font-mono">CREATE CONTEST</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Prompt */}
-          <div className="space-y-2">
+          <div>
             <Label htmlFor="prompt" className="font-mono text-sm">
-              PROMPT *
+              PROMPT * {formData.prompt.length < 10 && formData.prompt.length > 0 && <span className="text-red-500">(need {10 - formData.prompt.length} more chars)</span>}
             </Label>
-            <Input
+            <input
               id="prompt"
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
+              type="text"
+              value={formData.prompt}
+              onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
               placeholder="What question are you asking?"
-              className="font-mono"
+              className={`w-full px-3 py-2 border rounded font-mono text-sm ${
+                formData.prompt && formData.prompt.length < 10 
+                  ? "border-red-500 bg-red-50 dark:bg-red-950"
+                  : "border-border bg-background text-foreground"
+              }`}
+              minLength={10}
               maxLength={200}
+              required
             />
-            <p className="text-xs text-muted-foreground font-mono">{prompt.length}/200 characters</p>
+            <p className="text-xs text-muted-foreground font-mono mt-2">
+              {formData.prompt.length}/200 {formData.prompt.length >= 10 ? "✓" : ""}
+            </p>
           </div>
 
           {/* Options */}
-          <div className="space-y-2">
-            <Label className="font-mono text-sm">OPTIONS * (2-10)</Label>
+          <div>
+            <Label className="font-mono text-sm mb-3 block">
+              OPTIONS * {formData.options.filter(o => !o.trim()).length > 0 && <span className="text-red-500">({formData.options.filter(o => !o.trim()).length} empty)</span>}
+            </Label>
             <div className="space-y-2">
-              {options.map((option, index) => (
+              {formData.options.map((option, index) => (
                 <div key={index} className="flex gap-2">
-                  <Input
+                  <input
+                    type="text"
                     value={option}
-                    onChange={e => handleUpdateOption(index, e.target.value)}
+                    onChange={(e) => handleUpdateOption(index, e.target.value)}
                     placeholder={`Option ${index + 1}`}
-                    className="font-mono text-sm"
+                    className={`flex-1 px-3 py-2 border rounded font-mono text-sm ${
+                      option === "" 
+                        ? "border-red-500 bg-red-50 dark:bg-red-950"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                    required
                   />
-                  {options.length > 2 && (
-                    <Button
+                  {formData.options.length > 2 && (
+                    <button
                       type="button"
-                      variant="outline"
-                      className="px-2 bg-transparent"
                       onClick={() => handleRemoveOption(index)}
+                      className="px-3 py-2 border border-border rounded hover:bg-muted"
                     >
                       ×
-                    </Button>
+                    </button>
                   )}
                 </div>
               ))}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="font-mono text-xs w-full bg-transparent"
-              onClick={handleAddOption}
-              disabled={options.length >= 10}
-            >
-              + ADD OPTION
-            </Button>
+            {formData.options.length < 10 && (
+              <button
+                type="button"
+                onClick={handleAddOption}
+                className="mt-2 text-sm font-mono text-muted-foreground hover:text-foreground"
+              >
+                + ADD OPTION
+              </button>
+            )}
+            <p className="text-xs text-muted-foreground font-mono mt-2">
+              {formData.options.filter((o) => o).length}/{formData.options.length} options filled {formData.options.every(o => o.trim()) ? "✓" : ""}
+            </p>
           </div>
 
           {/* Duration */}
-          <div className="space-y-2">
-            <Label className="font-mono text-sm">VOTING DURATION *</Label>
+          <div>
+            <Label className="font-mono text-sm mb-3 block">VOTING DURATION *</Label>
             <div className="flex gap-2 mb-3">
               <div className="flex-1">
-                <Input
+                <input
                   type="number"
-                  min="0"
-                  max="365"
-                  value={durationDays}
-                  onChange={e => setDurationDays(Math.max(0, Number.parseInt(e.target.value) || 0))}
-                  placeholder="Days"
-                  className="font-mono text-sm"
+                  value={formData.durationDays}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      durationDays: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  min={0}
+                  className="w-full px-3 py-2 border border-border bg-background text-foreground font-mono text-sm rounded"
                 />
                 <p className="text-xs text-muted-foreground font-mono mt-1">Days</p>
               </div>
               <div className="flex-1">
-                <Input
+                <input
                   type="number"
-                  min="0"
-                  max="23"
-                  value={durationHours}
-                  onChange={e => setDurationHours(Math.min(23, Math.max(0, Number.parseInt(e.target.value) || 0)))}
-                  placeholder="Hours"
-                  className="font-mono text-sm"
+                  value={formData.durationHours}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      durationHours: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  min={0}
+                  max={23}
+                  className="w-full px-3 py-2 border border-border bg-background text-foreground font-mono text-sm rounded"
                 />
                 <p className="text-xs text-muted-foreground font-mono mt-1">Hours</p>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap mb-3">
-              {PRESET_DURATIONS.map(preset => (
-                <Button
-                  key={preset.value}
+
+            {/* Duration presets */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { days: 1, hours: 0, label: "1d" },
+                { days: 3, hours: 0, label: "3d" },
+                { days: 7, hours: 0, label: "7d" },
+                { days: 30, hours: 0, label: "30d" },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
                   type="button"
-                  variant="outline"
-                  className="font-mono text-xs bg-transparent"
-                  onClick={() => {
-                    setDurationDays(Math.floor(preset.value / 24));
-                    setDurationHours(preset.value % 24);
-                  }}
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      durationDays: preset.days,
+                      durationHours: preset.hours,
+                    })
+                  }
+                  className="px-3 py-1 border border-border rounded text-sm font-mono hover:bg-muted"
                 >
                   {preset.label}
-                </Button>
+                </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground font-mono">Ends: {endDate.toLocaleString()}</p>
+
+            <p className="text-xs text-muted-foreground font-mono mt-2">
+              Ends: {new Date(Date.now() + durationInSeconds * 1000).toLocaleString()}
+            </p>
           </div>
 
           {/* Voting Mode */}
-          <div className="space-y-3">
-            <Label className="font-mono text-sm">WHO CAN VOTE?</Label>
+          <div>
+            <Label className="font-mono text-sm mb-3 block">WHO CAN VOTE?</Label>
             <div className="space-y-2">
-              <div className="flex items-center gap-2 cursor-pointer p-2 border border-border rounded">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="radio"
-                  id="open"
-                  name="voting-mode"
                   value="open"
-                  checked={votingMode === "open"}
-                  onChange={e => setVotingMode(e.target.value as "open" | "gated")}
-                  className="cursor-pointer"
+                  checked={formData.votingMode === "open"}
+                  onChange={() =>
+                    setFormData({
+                      ...formData,
+                      votingMode: "open",
+                      requiredPassports: [],
+                    })
+                  }
+                  className="w-4 h-4"
                 />
-                <Label htmlFor="open" className="cursor-pointer flex-1 font-mono text-sm mb-0">
-                  Anyone (open voting)
-                </Label>
-              </div>
-              <div className="flex items-center gap-2 cursor-pointer p-2 border border-border rounded">
+                <span className="font-mono text-sm">Anyone (open voting)</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="radio"
-                  id="gated"
-                  name="voting-mode"
                   value="gated"
-                  checked={votingMode === "gated"}
-                  onChange={e => setVotingMode(e.target.value as "open" | "gated")}
-                  className="cursor-pointer"
+                  checked={formData.votingMode === "gated"}
+                  onChange={() => setFormData({ ...formData, votingMode: "gated" })}
+                  className="w-4 h-4"
                 />
-                <Label htmlFor="gated" className="cursor-pointer flex-1 font-mono text-sm mb-0">
-                  Passport holders only
-                </Label>
-              </div>
+                <span className="font-mono text-sm">Passport holders only</span>
+              </label>
             </div>
           </div>
 
           {/* Passport Selection */}
-          {votingMode === "gated" && (
-            <div className="space-y-2">
-              <Label className="font-mono text-sm">REQUIRED PASSPORTS</Label>
-              <p className="text-xs text-muted-foreground font-mono mb-3">Voters need ANY of the selected passports</p>
+          {formData.votingMode === "gated" && passportTypeIds.length > 0 && (
+            <div>
+              <Label className="font-mono text-sm mb-3 block">REQUIRED PASSPORTS</Label>
+              <p className="text-xs text-muted-foreground font-mono mb-3">
+                Voters need ANY of the selected passports
+              </p>
               <div className="space-y-2">
-                {MOCK_PASSPORTS.map(passport => (
-                  <div key={passport} className="flex items-center gap-2 p-2 border border-border rounded">
-                    <Checkbox
-                      id={passport}
-                      checked={selectedPassports.includes(passport)}
-                      onCheckedChange={() => handleTogglePassport(passport)}
+                {passportTypeIds.map((id) => (
+                  <label key={id} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.requiredPassports.includes(id)}
+                      onChange={() => handleTogglePassport(id)}
+                      className="w-4 h-4"
                     />
-                    <Label htmlFor={passport} className="cursor-pointer flex-1 font-mono text-sm mb-0">
-                      {passport}
-                    </Label>
-                  </div>
+                    <span className="font-mono text-sm">Passport {id}</span>
+                  </label>
                 ))}
               </div>
+              {formData.requiredPassports.length === 0 && (
+                <p className="text-xs text-red-500 font-mono mt-2">
+                  Select at least one passport
+                </p>
+              )}
             </div>
           )}
 
           {/* Preview */}
-          {prompt && (
-            <div className="border border-border p-4 bg-muted/30">
-              <p className="text-xs text-muted-foreground font-mono mb-3">PREVIEW</p>
-              <div className="border border-border p-3 bg-background">
-                <h4 className="font-mono font-semibold mb-2">{prompt}</h4>
-                <div className="mb-3 space-y-1">
-                  {validOptions.map((option, i) => (
-                    <p key={i} className="text-sm font-mono">
-                      • {option}
-                    </p>
+          <div className="border border-border rounded p-4 bg-muted/30">
+            <h3 className="font-mono text-sm font-bold mb-3">PREVIEW</h3>
+            <div className="space-y-2">
+              <p className="font-mono text-sm">{formData.prompt || "Prompt text"}</p>
+              <ul className="space-y-1">
+                {formData.options
+                  .filter((o) => o)
+                  .map((opt, i) => (
+                    <li key={i} className="font-mono text-sm text-muted-foreground">
+                      • {opt}
+                    </li>
                   ))}
-                </div>
-                <p className="text-xs text-muted-foreground font-mono">
-                  Ends in {totalHours} hours{votingMode === "gated" && " · Passport required"}
-                </p>
-              </div>
+              </ul>
+              <p className="font-mono text-xs text-muted-foreground">
+                Ends in {formData.durationDays}d {formData.durationHours}h
+              </p>
+              {formData.votingMode === "gated" && (
+                <p className="font-mono text-xs text-muted-foreground">🔒 Passport required</p>
+              )}
             </div>
-          )}
-
-          {/* Gas Estimate */}
-          <div className="border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground font-mono">GAS ESTIMATE: ~0.0015 ETH</p>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3">
-            <Button
+          <div className="flex gap-3 justify-end">
+            <button
               type="button"
-              variant="outline"
-              className="flex-1 font-mono bg-transparent"
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
+              className="px-4 py-2 border border-border rounded font-mono text-sm hover:bg-muted"
             >
               CANCEL
-            </Button>
-            <Button type="submit" className="flex-1 font-mono" disabled={!isValid || isLoading}>
-              {isLoading ? "CREATING..." : "CREATE CONTEST"}
+            </button>
+            <Button
+              type="submit"
+              disabled={!isValid || isCreating}
+              className="font-mono text-sm"
+            >
+              {isCreating ? "CREATING..." : "CREATE CONTEST"}
             </Button>
           </div>
         </form>

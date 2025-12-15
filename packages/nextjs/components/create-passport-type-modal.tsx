@@ -2,15 +2,21 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useWriteContract, useChainId } from "wagmi";
+import { uploadToIPFS, uploadImageToIPFS } from "@/utils/ipfs";
+import { notification } from "@/utils/scaffold-eth";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import deployedContracts from "@/contracts/deployedContracts";
-import { uploadImageToIPFS, uploadToIPFS } from "@/utils/ipfs";
-import { notification } from "@/utils/scaffold-eth";
-import { useChainId, useWriteContract } from "wagmi";
 
 interface CreatePassportTypeModalProps {
   assemblyAddress: `0x${string}`;
@@ -39,7 +45,8 @@ export default function CreatePassportTypeModal({
   const [isUploading, setIsUploading] = useState(false);
 
   // Get Assembly ABI from deployed contracts
-  const assemblyABI = (deployedContracts as any)[chainId]?.Assembly?.abi || [];
+  const assemblyABI =
+    (deployedContracts as any)[chainId]?.Assembly?.abi || [];
 
   // Contract write hooks - using direct wagmi hook with specific assembly address
   const { writeContractAsync: createPassportType, isPending: isCreatingPassport } = useWriteContract();
@@ -79,15 +86,15 @@ export default function CreatePassportTypeModal({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = event => {
+    reader.onload = (event) => {
       const text = event.target?.result as string;
-      const lines = text.split("\n").filter(line => line.trim());
+      const lines = text.split("\n").filter((line) => line.trim());
 
       // Skip header if present
       const addresses = lines
         .slice(lines[0].toLowerCase().includes("address") ? 1 : 0)
-        .map(line => line.trim())
-        .filter(addr => addr.startsWith("0x"));
+        .map((line) => line.trim())
+        .filter((addr) => addr.startsWith("0x"));
 
       setFormData({
         ...formData,
@@ -95,6 +102,10 @@ export default function CreatePassportTypeModal({
       });
     };
     reader.readAsText(file);
+  };
+
+  const validateAddresses = (addresses: string[]): string[] => {
+    return addresses.filter((addr) => addr.match(/^0x[a-fA-F0-9]{40}$/));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,9 +183,9 @@ export default function CreatePassportTypeModal({
       const errorMessage = error instanceof Error ? error.message : "Failed to create passport type";
       notification.error(`Error: ${errorMessage}`);
     }
-  };
+  }
 
-  const validAllowlistAddresses = formData.allowlist.filter(addr => addr.match(/^0x[a-fA-F0-9]{40}$/));
+  const validAllowlistAddresses = formData.allowlist.filter((addr) => addr.match(/^0x[a-fA-F0-9]{40}$/));
   const isValid =
     formData.name.trim().length > 0 &&
     formData.name.length <= 30 &&
@@ -199,7 +210,7 @@ export default function CreatePassportTypeModal({
             <Input
               id="name"
               value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Member, Contributor, Core Team"
               className="font-mono"
               maxLength={30}
@@ -216,13 +227,15 @@ export default function CreatePassportTypeModal({
             <Textarea
               id="description"
               value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Brief description of this role"
               className="font-mono min-h-20"
               maxLength={200}
               rows={3}
             />
-            <p className="text-xs text-muted-foreground font-mono">{formData.description.length}/200 characters</p>
+            <p className="text-xs text-muted-foreground font-mono">
+              {formData.description.length}/200 characters
+            </p>
           </div>
 
           {/* Image */}
@@ -241,13 +254,7 @@ export default function CreatePassportTypeModal({
               <p className="text-xs text-muted-foreground font-mono mt-2">Recommended: 500x500px</p>
             </div>
             {imagePreview && (
-              <Image
-                src={imagePreview}
-                alt="preview"
-                width={500}
-                height={128}
-                className="w-full h-32 object-cover border border-border"
-              />
+              <Image src={imagePreview} alt="preview" width={500} height={128} className="w-full h-32 object-cover border border-border" />
             )}
           </div>
 
@@ -286,7 +293,7 @@ export default function CreatePassportTypeModal({
                   <div key={index} className="flex gap-2">
                     <Input
                       value={address}
-                      onChange={e => updateAllowlistAddress(index, e.target.value)}
+                      onChange={(e) => updateAllowlistAddress(index, e.target.value)}
                       placeholder="0x..."
                       className="font-mono text-xs flex-1"
                       pattern="^0x[a-fA-F0-9]{40}$"
@@ -320,7 +327,13 @@ export default function CreatePassportTypeModal({
                 <Label htmlFor="csv" className="font-mono text-xs text-muted-foreground mb-2 block">
                   Or upload CSV
                 </Label>
-                <Input id="csv" type="file" accept=".csv" onChange={handleCSVUpload} className="font-mono text-xs" />
+                <Input
+                  id="csv"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  className="font-mono text-xs"
+                />
               </div>
 
               <p className="text-xs text-muted-foreground font-mono">
@@ -363,8 +376,16 @@ export default function CreatePassportTypeModal({
             >
               CANCEL
             </Button>
-            <Button type="submit" className="flex-1 font-mono" disabled={!isValid || isUploading || isCreatingPassport}>
-              {isUploading ? "UPLOADING..." : isCreatingPassport ? "CREATING..." : "CREATE PASSPORT TYPE"}
+            <Button
+              type="submit"
+              className="flex-1 font-mono"
+              disabled={!isValid || isUploading || isCreatingPassport}
+            >
+              {isUploading
+                ? "UPLOADING..."
+                : isCreatingPassport
+                  ? "CREATING..."
+                  : "CREATE PASSPORT TYPE"}
             </Button>
           </div>
         </form>
