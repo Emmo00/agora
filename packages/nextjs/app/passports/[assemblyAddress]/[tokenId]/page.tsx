@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { convertIPFSUrl, fetchFromIPFS } from "@/utils/ipfs";
 import { notification } from "@/utils/scaffold-eth";
 import deployedContracts from "@/contracts/deployedContracts";
@@ -197,16 +198,7 @@ export default function PassportMintPage() {
             <p className="text-sm text-muted-foreground font-mono mb-4">
               Connect your wallet to mint this passport
             </p>
-            <Button 
-              className="font-mono text-sm"
-              onClick={() => {
-                // Trigger wallet connection - RainbowKit handles this
-                const event = new CustomEvent('rainbow-kit-connect');
-                window.dispatchEvent(event);
-              }}
-            >
-              CONNECT WALLET
-            </Button>
+            <ConnectWalletButton />
           </Card>
         );
 

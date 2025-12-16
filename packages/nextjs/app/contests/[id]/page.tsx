@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import deployedContracts from "@/contracts/deployedContracts";
 import { notification } from "@/utils/scaffold-eth";
 import Link from "next/link";
@@ -301,7 +302,7 @@ export default function ContestDetailPage() {
             {!isConnected ? (
               <Card className="p-6 border border-border bg-muted/30 text-center">
                 <p className="text-sm text-muted-foreground font-mono mb-4">Connect your wallet to vote</p>
-                <Button className="font-mono">CONNECT WALLET</Button>
+                <ConnectWalletButton />
               </Card>
             ) : !canVote ? (
               <Card className="p-6 border border-border bg-muted/30 text-center">
