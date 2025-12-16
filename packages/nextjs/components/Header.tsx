@@ -9,7 +9,7 @@ export default function Header() {
           <div className="w-8 h-8 border-2 border-foreground"></div>
           <span className="font-mono font-bold text-lg">AGORA</span>
         </Link>
-        <nav className="flex items-center gap-12">
+        <nav className="flex items-center md:gap-12">
           <Link href="/assemblies" className="hidden md:block font-mono text-sm hover:text-muted-foreground transition-colors">
             Groups
           </Link>
